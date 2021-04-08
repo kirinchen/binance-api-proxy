@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+binance-futures = "*"
+certifi = "*"
+chardet = "*"
+idna = "*"
+pytz = "*"
+requests = "*"
+six = "*"
+tzlocal = "*"
+urllib3 = "*"
+websocket-client = "*"
+APScheduler = "*"
+flask = "*"
+pytest = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
