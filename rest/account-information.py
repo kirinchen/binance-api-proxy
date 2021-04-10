@@ -6,6 +6,5 @@ def run(client: RequestClient, payload: dict):
     result: AccountInformation = client.get_account_information()
     result.assets = None
     result.positions = None
-    client.post_order()
     return result.__dict__
 

@@ -20,6 +20,11 @@ class PayloadReqKey(Enum):
         ans = [e for e in PayloadReqKey]
         return ans
 
+    @classmethod
+    def clean_default_keys(cls, payload: dict):
+        for k in PayloadReqKey.values():
+            del payload[k.value]
+
 
 app = Flask(__name__)
 
