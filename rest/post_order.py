@@ -1,7 +1,11 @@
+import string
 from enum import Enum
 import uuid
+import random
+
 from binance_f import RequestClient
 from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation
+from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
 
 
@@ -16,8 +20,9 @@ def _get_val(payload: dict, k: PayloadKey):
     return payload[k.value]
 
 
-def fix_precision(fv: float):
-    ans = float('{:.2f}'.format(fv))
+def fix_precision(p: int, fv: float):
+    fstr = str(p) + 'f'
+    ans = float(('{:.' + fstr + '}').format(fv))
     return str(ans)
 
 
@@ -43,33 +48,37 @@ def run(client: RequestClient, payload: dict):
     #     "closePosition": False,
     #     "quantity": fix_precision(quantity)
     # }
+    systr = _get_val(payload, PayloadKey.symbol)
+    symbol = Symbol.get(systr)
 
-    oid = str(uuid.uuid4())
+    letters = string.ascii_letters
+    oid = (''.join(random.choice(letters) for i in range(10)))
 
-    result = client.post_order(price=fix_precision(quote),
+    result = client.post_order(price=fix_precision(symbol.precision_price, quote),
                                side=OrderSide.SELL,
-                               symbol=_get_val(payload, PayloadKey.symbol),
+                               symbol=f'{symbol.symbol}USDT',
                                timeInForce=TimeInForce.GTC,
                                ordertype=OrderType.LIMIT,
                                workingType=WorkingType.CONTRACT_PRICE,
                                positionSide=PositionSide.SHORT,
                                activationPrice=None,
                                closePosition=False,
-                               quantity=fix_precision(quantity),
+                               quantity=fix_precision(symbol.precision_amount, quantity),
                                newClientOrderId=oid
                                )
 
     result = client.post_order(
-                               side=OrderSide.SELL,
-                               symbol=_get_val(payload, PayloadKey.symbol),
-                               timeInForce=TimeInForce.GTC,
-                               ordertype=OrderType.TAKE_PROFIT_MARKET ,
-                               workingType=WorkingType.CONTRACT_PRICE,
-                               positionSide=PositionSide.SHORT,
-                               stopPrice=fix_precision(max_stop),
-                               closePosition=False,
-                               quantity=fix_precision(quantity)
-                               )
+        side=OrderSide.BUY,
+        symbol=f'{symbol.symbol}USDT',
+        timeInForce=TimeInForce.GTC,
+        ordertype=OrderType.STOP_MARKET,
+        workingType=WorkingType.CONTRACT_PRICE,
+        positionSide=PositionSide.SHORT,
+        stopPrice=fix_precision(symbol.precision_price, max_stop),
+        closePosition=False,
+        quantity=fix_precision(symbol.precision_amount, quantity),
+        newClientOrderId="for"+oid
+    )
 
     return {}
 
