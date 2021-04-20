@@ -1,8 +1,9 @@
+import json
 import os
 from enum import Enum
 from os import environ
 
-from flask import Flask
+from flask import Flask, Response
 from flask import request
 
 from binance_f import RequestClient
@@ -42,7 +43,7 @@ def proxy():
     spec = importlib.util.spec_from_file_location("action", f"{wd_path}/{payload.get(PayloadReqKey.name.value)}.py")
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    return foo.run(client, payload), 201
+    return Response(json.dumps(foo.run(client, payload)),  mimetype='application/json')
 
 
 def _gen_request_client(payload: dict) -> RequestClient:
