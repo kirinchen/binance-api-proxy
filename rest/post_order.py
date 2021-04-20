@@ -10,10 +10,11 @@ from rest.poxy_controller import PayloadReqKey
 
 
 class PayloadKey(Enum):
-    investedRate = 'investedRate'
-    guardRange = 'guardRange'
-    quote = 'quote'
-    symbol = 'symbol'
+    investedRate = 'investedRate'  # 0.5
+    guardRange = 'guardRange'  # 0.02
+    quote = 'quote'  # 600
+    symbol = 'symbol'  # ETC BTC
+    selled = 'selled'  # True / False
 
 
 def _get_val(payload: dict, k: PayloadKey):
@@ -28,26 +29,22 @@ def fix_precision(p: int, fv: float):
 
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
+    selled: bool = _get_val(payload, PayloadKey.selled)
     account: AccountInformation = client.get_account_information()
     leverage_ratio = _get_val(payload, PayloadKey.investedRate) / _get_val(payload, PayloadKey.guardRange)
     amount = account.maxWithdrawAmount
     quote = _get_val(payload, PayloadKey.quote)
     quantity = (amount * leverage_ratio) / quote
-    max_stop = quote * (1 + _get_val(payload, PayloadKey.guardRange))
+    if selled:
+        max_stop = quote * (1 + _get_val(payload, PayloadKey.guardRange))
+    else:
+        max_stop = quote * (1 - _get_val(payload, PayloadKey.guardRange))
 
-    # od = {
-    #     TODO ID
-    #     "price": fix_precision(quote),
-    #     "side": OrderSide.SELL,
-    #     "symbol": "ETCUSDT",
-    #     "timeInForce": TimeInForce.GTC,
-    #     "ordertype": OrderType.LIMIT,
-    #     "workingType": WorkingType.CONTRACT_PRICE,
-    #     "positionSide": PositionSide.SHORT,
-    #     "activationPrice": None,
-    #     "closePosition": False,
-    #     "quantity": fix_precision(quantity)
-    # }
+    order_side = OrderSide.SELL if selled else OrderSide.BUY
+    stop_side = OrderSide.BUY if selled else OrderSide.SELL
+
+    order_position = PositionSide.SHORT if selled else PositionSide.LONG
+
     systr = _get_val(payload, PayloadKey.symbol)
     symbol = Symbol.get(systr)
 
@@ -55,29 +52,29 @@ def run(client: RequestClient, payload: dict):
     oid = (''.join(random.choice(letters) for i in range(10)))
 
     result = client.post_order(price=fix_precision(symbol.precision_price, quote),
-                               side=OrderSide.SELL,
+                               side=order_side,
                                symbol=f'{symbol.symbol}USDT',
                                timeInForce=TimeInForce.GTC,
                                ordertype=OrderType.LIMIT,
                                workingType=WorkingType.CONTRACT_PRICE,
-                               positionSide=PositionSide.SHORT,
-                               activationPrice=None,
-                               closePosition=False,
+                               positionSide=order_position,
+                               # activationPrice=None,
+                               # closePosition=False,
                                quantity=fix_precision(symbol.precision_amount, quantity),
                                newClientOrderId=oid
                                )
 
     result = client.post_order(
-        side=OrderSide.BUY,
+        side=stop_side,
         symbol=f'{symbol.symbol}USDT',
         timeInForce=TimeInForce.GTC,
         ordertype=OrderType.STOP_MARKET,
         workingType=WorkingType.CONTRACT_PRICE,
-        positionSide=PositionSide.SHORT,
+        positionSide=PositionSide.LONG,
         stopPrice=fix_precision(symbol.precision_price, max_stop),
-        closePosition=False,
+        # closePosition=False,
         quantity=fix_precision(symbol.precision_amount, quantity),
-        newClientOrderId="for"+oid
+        newClientOrderId="for" + oid
     )
 
     return {}
