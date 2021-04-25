@@ -50,8 +50,9 @@ def run(client: RequestClient, payload: dict):
 
     letters = string.ascii_letters
     oid = (''.join(random.choice(letters) for i in range(10)))
-
-    result = client.post_order(price=fix_precision(symbol.precision_price, quote),
+    price = fix_precision(symbol.precision_price, quote)
+    quantity = fix_precision(symbol.precision_amount, quantity)
+    result = client.post_order(price=price,
                                side=order_side,
                                symbol=f'{symbol.symbol}USDT',
                                timeInForce=TimeInForce.GTC,
@@ -60,10 +61,10 @@ def run(client: RequestClient, payload: dict):
                                positionSide=order_position,
                                # activationPrice=None,
                                # closePosition=False,
-                               quantity=fix_precision(symbol.precision_amount, quantity),
+                               quantity=quantity,
                                newClientOrderId=oid
                                )
-
+    stopPrice = fix_precision(symbol.precision_price, max_stop)
     result = client.post_order(
         side=stop_side,
         symbol=f'{symbol.symbol}USDT',
@@ -71,13 +72,17 @@ def run(client: RequestClient, payload: dict):
         ordertype=OrderType.STOP_MARKET,
         workingType=WorkingType.CONTRACT_PRICE,
         positionSide=PositionSide.LONG,
-        stopPrice=fix_precision(symbol.precision_price, max_stop),
+        stopPrice=stopPrice,
         # closePosition=False,
-        quantity=fix_precision(symbol.precision_amount, quantity),
+        quantity=quantity,
         newClientOrderId="for" + oid
     )
 
-    return {}
+    return {
+        "price": price,
+        "stopPrice": stopPrice,
+        "quantity": quantity
+    }
 
 
 def _test(a: str, b: int, c: str):
