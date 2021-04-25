@@ -32,7 +32,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return f"Hello, World! "
+    return f"Hello, World! BA"
 
 
 @app.route('/proxy', methods=['POST'])
