@@ -1,14 +1,14 @@
-import json
-from typing import List
-
 from binance_f import RequestClient
 from binance_f.constant.test import *
 from binance_f.base.printobject import *
-from binance_f.model import Position
 from binance_f.model.constant import *
+
+# request_client = RequestClient(api_key=g_api_key, secret_key=g_secret_key)
+# result = request_client.get_all_orders(symbol="BTCUSDT")
+# PrintMix.print_data(result)
 
 
 def run(client: RequestClient, payload: dict):
-    result: List[object] = client.get_account_trades(symbol=f"{payload.get('symbol')}USDT")
+    result = client.get_all_orders(symbol=payload.get('symbol') + 'USDT')
     pos = [r.__dict__ for r in result]
     return pos
