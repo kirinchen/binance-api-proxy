@@ -29,3 +29,8 @@ class Symbol(Enum):
             if e.symbol == systr:
                 return e
         raise KeyError('Not find :' + systr)
+
+    @classmethod
+    def get_with_usdt(cls, s: str):
+        s = s.replace('USDT', '')
+        return Symbol.get(s)
