@@ -7,6 +7,7 @@ from binance_f import RequestClient
 from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation
 from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
+from utils import comm_utils
 
 
 class PayloadKey(Enum):
@@ -48,10 +49,9 @@ def run(client: RequestClient, payload: dict):
     systr = _get_val(payload, PayloadKey.symbol)
     symbol = Symbol.get(systr)
 
-    letters = string.ascii_letters
-    oid = (''.join(random.choice(letters) for i in range(10)))
+    oid = 'rob_' + comm_utils.random_chars(8)
     price = fix_precision(symbol.precision_price, quote)
-    quantity = fix_precision(symbol.precision_amount, quantity)
+    quantity_str = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(price=price,
                                side=order_side,
                                symbol=f'{symbol.symbol}USDT',
@@ -61,10 +61,21 @@ def run(client: RequestClient, payload: dict):
                                positionSide=order_position,
                                # activationPrice=None,
                                # closePosition=False,
-                               quantity=quantity,
+                               quantity=quantity_str,
                                newClientOrderId=oid
                                )
-    stopPrice = fix_precision(symbol.precision_price, max_stop)
+    post_stop_order(client, stop_side, symbol, max_stop, quantity)
+
+    return {
+        "price": price,
+        "stopPrice": max_stop,
+        "quantity": quantity
+    }
+
+
+def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopPrice: float, quantity: float):
+    stopPrice = fix_precision(symbol.precision_price, stopPrice)
+    quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
         side=stop_side,
         symbol=f'{symbol.symbol}USDT',
@@ -75,14 +86,8 @@ def run(client: RequestClient, payload: dict):
         stopPrice=stopPrice,
         # closePosition=False,
         quantity=quantity,
-        newClientOrderId="for" + oid
+        newClientOrderId="rob_stp_" + comm_utils.random_chars(8)
     )
-
-    return {
-        "price": price,
-        "stopPrice": stopPrice,
-        "quantity": quantity
-    }
 
 
 def _test(a: str, b: int, c: str):

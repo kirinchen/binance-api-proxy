@@ -33,4 +33,6 @@ class Symbol(Enum):
     @classmethod
     def get_with_usdt(cls, s: str):
         s = s.replace('USDT', '')
+        if s == 'BTC':
+            print(s)
         return Symbol.get(s)

@@ -8,6 +8,8 @@ from binance_f.model import AccountInformation, Position, Order, PositionSide, O
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.f6750ff5cdca439ab3f675020fe7c12f  get position
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.29d904609c7e464ab7327d7bef7d9b93  get open orders
 from market.Symbol import Symbol
+from rest import post_order, cancel_order
+from rest.poxy_controller import PayloadReqKey
 
 
 class ProfitEnoughError(Exception):
@@ -25,7 +27,7 @@ class PositionOrders:
 
     def __init__(self):
         self.positions: List[Position] = list()
-        self.orders: List[Order] = list();
+        self.orders: List[Order] = list()
 
 
 class CutOrder:
@@ -34,13 +36,18 @@ class CutOrder:
         self.position: Position = None
         self.stopOrders: List[Order] = list()
         self.logic: CutLogic = None
+        self.symbol: Symbol = None
 
-    def setup_position(self, pos: Position):
+    def setup_position(self, pos: Position, symbol: Symbol):
+        if pos.positionAmt <= 0:
+            return
         self.position = pos
+        self.symbol = symbol
         self.logic = gen_cut_logic(self)
 
-    def cut(self, payload: Payload):
-        self.logic.cut(payload)
+    def cut(self, client: RequestClient, payload: Payload):
+        if self.position and self.logic:
+            self.logic.cut(client, payload)
 
 
 class CutLogic(metaclass=ABCMeta):
@@ -51,15 +58,39 @@ class CutLogic(metaclass=ABCMeta):
         self.entryPrice = self.cutOrder.position.entryPrice
         self.profitRate = -99999999
         self.stepPrices = list()
+        self.stepQuantity = 0
 
-    def calc_bundle(self, payload: Payload):
+    def _calc_bundle(self, payload: Payload):
         self.profitRate = self.calc_profit_rate()
         if self.profitRate < payload.profitRate:
-            raise ProfitEnoughError(self.profitRate + '<' + payload.profitRate)
-        self.calc_step_prices(payload.cutCount)
+            raise ProfitEnoughError(str(self.profitRate) + '<' + str(payload.profitRate))
+        self.stepPrices = self.calc_step_prices(payload.cutCount)
+        self.stepQuantity = self.cutOrder.position.positionAmt / payload.cutCount
 
-    def cut(self, payload: Payload):
-        TODO
+    def cut(self, client: RequestClient, payload: Payload):
+        try:
+            self._calc_bundle(payload)
+        except ProfitEnoughError:
+            print("not over th")
+            return
+        for sp in self.stepPrices:
+            post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol, stop_side=self.get_stop_side(),
+                                       stopPrice=sp,
+                                       quantity=self.stepQuantity)
+        self.clean_over_order(client)
+
+    def clean_over_order(self, client: RequestClient):
+        self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
+        sumQ = 0.0
+        for ods in self.cutOrder.stopOrders:
+            if sumQ > self.cutOrder.position.positionAmt:
+                cancel_order.cancel_order(client, self.cutOrder.symbol, ods.orderId)
+                continue
+            sumQ += ods.origQty
+
+    @abstractmethod
+    def get_stop_side(self) -> str:
+        pass
 
     @abstractmethod
     def calc_profit_rate(self) -> float:
@@ -72,6 +103,9 @@ class CutLogic(metaclass=ABCMeta):
 
 class LongCutLogic(CutLogic):
 
+    def get_stop_side(self) -> str:
+        return OrderSide.SELL
+
     def calc_step_prices(self, cutCount: int) -> List[float]:
         ans: List[float] = list()
         dp = self.markPrice - self.entryPrice
@@ -82,7 +116,7 @@ class LongCutLogic(CutLogic):
         return ans
 
     def calc_profit_rate(self) -> float:
-        return ((self.markPrice - self.entryPrice) / self.entryPrice) - 1
+        return ((self.markPrice - self.entryPrice) / self.entryPrice) * self.cutOrder.position.leverage
 
     def __init__(self, cd: CutOrder):
         super().__init__(cd)
@@ -90,11 +124,23 @@ class LongCutLogic(CutLogic):
 
 class ShortCutLogic(CutLogic):
 
+    def calc_step_prices(self, cutCount: int) -> List[float]:
+        ans: List[float] = list()
+        dp = self.entryPrice - self.markPrice
+        dsp = dp / cutCount
+        for i in range(cutCount):
+            p = (dsp * i) + self.markPrice
+            ans.append(p)
+        return ans
+
+    def get_stop_side(self) -> str:
+        return OrderSide.BUY
+
     def __init__(self, cd: CutOrder):
         super().__init__(cd)
 
     def calc_profit_rate(self) -> float:
-        return ((self.entryPrice - self.markPrice) / self.entryPrice) - 1
+        return (self.entryPrice - self.markPrice) / self.entryPrice
 
 
 def gen_cut_logic(cd: CutOrder) -> CutLogic:
@@ -108,6 +154,7 @@ class Runner:
 
     def __init__(self, client: RequestClient, payload: Payload):
         self.payload = payload
+        self.client = client
         self.positions: List[Position] = client.get_position()
         self.openOrders: List[Order] = client.get_open_orders()
         self.cutOrderMap: Dict[str, Dict[Symbol, CutOrder]] = dict()
@@ -124,7 +171,7 @@ class Runner:
         map: Dict[Symbol, CutOrder] = self.cutOrderMap[side]
         for e in Symbol:
             e: Symbol = e
-            map[e].cut(self.payload)
+            map[e].cut(self.client, self.payload)
 
     @staticmethod
     def _gen_symbol_cutorders() -> Dict[Symbol, CutOrder]:
@@ -137,7 +184,7 @@ class Runner:
         for pos in self.positions:
             try:
                 symbol = Symbol.get_with_usdt(pos.symbol)
-                self.cutOrderMap[pos.positionSide][symbol].setup_position(pos)
+                self.cutOrderMap[pos.positionSide][symbol].setup_position(pos, symbol)
             except KeyError:
                 print("dont work")
 
@@ -155,8 +202,8 @@ class Runner:
 
 
 def run(client: RequestClient, payload: dict):
+    PayloadReqKey.clean_default_keys(payload)
     pl = Payload(**payload)
     runner = Runner(client, pl)
-
-    print(runner.cutOrderMap)
+    runner.run_all()
     return {}
