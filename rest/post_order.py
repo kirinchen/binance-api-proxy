@@ -6,20 +6,33 @@ import random
 from binance_f import RequestClient
 from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
 from market.Symbol import Symbol
+from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
 
 
-class PayloadKey(Enum):
-    investedRate = 'investedRate'  # 0.5
-    guardRange = 'guardRange'  # 0.02
-    quote = 'quote'  # 600
-    symbol = 'symbol'  # ETC BTC
-    selled = 'selled'  # True / False
+class Payload:
+
+    def __init__(self, investedRate: float, guardRange: float, symbol: str, selled: bool, quote: float = None,
+                 currentMove: float = None):
+        self.investedRate = investedRate
+        self.guardRange = guardRange
+        self.quote = quote
+        self.symbol: Symbol = Symbol.get(symbol)
+        self.selled = selled
+        self.currentMove = currentMove
 
 
-def _get_val(payload: dict, k: PayloadKey):
-    return payload[k.value]
+# class PayloadKey(Enum):
+#     investedRate = 'investedRate'  # 0.5
+#     guardRange = 'guardRange'  # 0.02
+#     quote = 'quote'  # 600
+#     symbol = 'symbol'  # ETC BTC
+#     selled = 'selled'  # True / False
+#
+#
+# def _get_val(payload: dict, k: PayloadKey):
+#     return payload[k.value]
 
 
 def fix_precision(p: int, fv: float):
@@ -28,33 +41,40 @@ def fix_precision(p: int, fv: float):
     return str(ans)
 
 
+def calc_quote(client: RequestClient, pl: Payload) -> float:
+    if pl.quote is None:
+        cqr = get_recent_trades_list.fetch(client, pl.symbol, 200)
+        cq = cqr.sell.avgPrice if pl.selled else cqr.buy.avgPrice
+        rate = 1 + pl.currentMove if pl.selled else 1 - pl.currentMove
+        return cq * rate
+    else:
+        return pl.quote
+
+
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
-    selled: bool = _get_val(payload, PayloadKey.selled)
+    pl = Payload(**payload)
     account: AccountInformation = client.get_account_information()
-    leverage_ratio = _get_val(payload, PayloadKey.investedRate) / _get_val(payload, PayloadKey.guardRange)
+    leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount
-    quote = _get_val(payload, PayloadKey.quote)
+    quote = calc_quote(client, pl)
     quantity = (amount * leverage_ratio) / quote
-    if selled:
-        max_stop = quote * (1 + _get_val(payload, PayloadKey.guardRange))
+    if pl.selled:
+        max_stop = quote * (1 + pl.guardRange)
     else:
-        max_stop = quote * (1 - _get_val(payload, PayloadKey.guardRange))
+        max_stop = quote * (1 - pl.guardRange)
 
-    order_side = OrderSide.SELL if selled else OrderSide.BUY
-    stop_side = OrderSide.BUY if selled else OrderSide.SELL
+    order_side = OrderSide.SELL if pl.selled else OrderSide.BUY
+    stop_side = OrderSide.BUY if pl.selled else OrderSide.SELL
 
-    order_position = PositionSide.SHORT if selled else PositionSide.LONG
-
-    systr = _get_val(payload, PayloadKey.symbol)
-    symbol = Symbol.get(systr)
+    order_position = PositionSide.SHORT if pl.selled else PositionSide.LONG
 
     oid = 'rob_' + comm_utils.random_chars(8)
-    price = fix_precision(symbol.precision_price, quote)
-    quantity_str = fix_precision(symbol.precision_amount, quantity)
+    price = fix_precision(pl.symbol.precision_price, quote)
+    quantity_str = fix_precision(pl.symbol.precision_amount, quantity)
     result = client.post_order(price=price,
                                side=order_side,
-                               symbol=f'{symbol.symbol}USDT',
+                               symbol=f'{pl.symbol.symbol}USDT',
                                timeInForce=TimeInForce.GTC,
                                ordertype=OrderType.LIMIT,
                                workingType=WorkingType.CONTRACT_PRICE,
@@ -64,7 +84,7 @@ def run(client: RequestClient, payload: dict):
                                quantity=quantity_str,
                                newClientOrderId=oid
                                )
-    post_stop_order(client, stop_side, symbol, max_stop, quantity)
+    post_stop_order(client, stop_side, pl.symbol, max_stop, quantity)
 
     return {
         "price": price,

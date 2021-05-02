@@ -17,6 +17,9 @@ class Symbol(Enum):
     EOS = ('EOS', 3, 1)
     BNB = ('BNB', 3, 2)
 
+    def get_with_usdt(self):
+        return f'{self.symbol}USDT'
+
     @classmethod
     def values(cls):
         ans = [e for e in Symbol]
