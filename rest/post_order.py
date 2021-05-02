@@ -4,7 +4,7 @@ import uuid
 import random
 
 from binance_f import RequestClient
-from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation
+from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
 from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
@@ -73,7 +73,7 @@ def run(client: RequestClient, payload: dict):
     }
 
 
-def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopPrice: float, quantity: float):
+def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopPrice: float, quantity: float) -> Order:
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
@@ -88,6 +88,7 @@ def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopP
         quantity=quantity,
         newClientOrderId="rob_stp_" + comm_utils.random_chars(8)
     )
+    return result
 
 
 def _test(a: str, b: int, c: str):

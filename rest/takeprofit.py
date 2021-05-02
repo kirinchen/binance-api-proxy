@@ -64,7 +64,7 @@ class CutLogic(metaclass=ABCMeta):
         self.profitRate = self.calc_profit_rate()
         if self.profitRate < payload.profitRate:
             raise ProfitEnoughError(str(self.profitRate) + '<' + str(payload.profitRate))
-        self.stepPrices = self.calc_step_prices(payload.cutCount)
+        self.stepPrices = self.calc_step_prices(payload.cutCount, payload.topRate)
         self.stepQuantity = self.cutOrder.position.positionAmt / payload.cutCount
 
     def cut(self, client: RequestClient, payload: Payload):
@@ -74,9 +74,11 @@ class CutLogic(metaclass=ABCMeta):
             print("not over th")
             return
         for sp in self.stepPrices:
-            post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol, stop_side=self.get_stop_side(),
-                                       stopPrice=sp,
-                                       quantity=self.stepQuantity)
+            nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
+                                              stop_side=self.get_stop_side(),
+                                              stopPrice=sp,
+                                              quantity=self.stepQuantity)
+            self.cutOrder.stopOrders.append(nods)
         self.clean_over_order(client)
 
     def clean_over_order(self, client: RequestClient):
@@ -97,7 +99,7 @@ class CutLogic(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def calc_step_prices(self, cutCount: int) -> List[float]:
+    def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
         pass
 
 
@@ -106,12 +108,12 @@ class LongCutLogic(CutLogic):
     def get_stop_side(self) -> str:
         return OrderSide.SELL
 
-    def calc_step_prices(self, cutCount: int) -> List[float]:
+    def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
         ans: List[float] = list()
-        dp = self.markPrice - self.entryPrice
+        dp = (self.markPrice - self.entryPrice) * topRate
         dsp = dp / cutCount
         for i in range(cutCount):
-            p = (dsp * i) + self.entryPrice
+            p = (dsp * (i + 1)) + self.entryPrice
             ans.append(p)
         return ans
 
@@ -124,12 +126,12 @@ class LongCutLogic(CutLogic):
 
 class ShortCutLogic(CutLogic):
 
-    def calc_step_prices(self, cutCount: int) -> List[float]:
+    def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
         ans: List[float] = list()
-        dp = self.entryPrice - self.markPrice
+        dp = (self.entryPrice - self.markPrice) * topRate
         dsp = dp / cutCount
         for i in range(cutCount):
-            p = (dsp * i) + self.markPrice
+            p = (dsp * (i + 1)) + self.markPrice
             ans.append(p)
         return ans
 
