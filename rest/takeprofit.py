@@ -12,6 +12,13 @@ from rest import post_order, cancel_order
 from rest.poxy_controller import PayloadReqKey
 
 
+class AmtPrice:
+    def __init__(self, amt: float, price: float, newed: bool = False):
+        self.amt = amt
+        self.price = price
+        self.newed = newed
+
+
 class ProfitEnoughError(Exception):
     pass
 
@@ -64,8 +71,28 @@ class CutLogic(metaclass=ABCMeta):
         self.profitRate = self.calc_profit_rate()
         if self.profitRate < payload.profitRate:
             raise ProfitEnoughError(str(self.profitRate) + '<' + str(payload.profitRate))
-        self.stepPrices = self.calc_step_prices(payload.cutCount, payload.topRate)
         self.stepQuantity = self.cutOrder.position.positionAmt / payload.cutCount
+        sp = self.calc_step_prices(payload.cutCount, payload.topRate)
+        self._add_step_prices(sp)
+
+    def _add_step_prices(self, ps: List[float]):
+        sumQ = 0.0
+        aps = self._list_amt_price(ps)
+        for p in aps:
+            if sumQ > self.cutOrder.position.positionAmt:
+                return
+            if p.newed:
+                self.stepPrices.append(p.price)
+            sumQ += p.amt
+
+    def _list_amt_price(self, ps: List[float]) -> List[AmtPrice]:
+        ans: List[AmtPrice] = list()
+        for p in ps:
+            ans.append(AmtPrice(self.stepQuantity, p, True))
+        for ods in self.cutOrder.stopOrders:
+            ans.append(AmtPrice(ods.origQty, ods.stopPrice, False))
+        self.sort_amt_price(ans)
+        return ans
 
     def cut(self, client: RequestClient, payload: Payload):
         try:
@@ -91,6 +118,10 @@ class CutLogic(metaclass=ABCMeta):
             sumQ += ods.origQty
 
     @abstractmethod
+    def sort_amt_price(self, aps: List[AmtPrice]):
+        pass
+
+    @abstractmethod
     def get_stop_side(self) -> str:
         pass
 
@@ -104,6 +135,9 @@ class CutLogic(metaclass=ABCMeta):
 
 
 class LongCutLogic(CutLogic):
+
+    def sort_amt_price(self, aps: List[AmtPrice]):
+        aps.sort(key=lambda s: s.price)
 
     def get_stop_side(self) -> str:
         return OrderSide.SELL
@@ -125,6 +159,9 @@ class LongCutLogic(CutLogic):
 
 
 class ShortCutLogic(CutLogic):
+
+    def sort_amt_price(self, aps: List[AmtPrice]):
+        aps.sort(key=lambda s: s.price, reverse=True)
 
     def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
         ans: List[float] = list()
