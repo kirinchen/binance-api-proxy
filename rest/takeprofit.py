@@ -112,7 +112,7 @@ class CutLogic(metaclass=ABCMeta):
         self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
         sumQ = 0.0
         for ods in self.cutOrder.stopOrders:
-            if sumQ > self.cutOrder.position.positionAmt:
+            if sumQ >= self.cutOrder.position.positionAmt:
                 cancel_order.cancel_order(client, self.cutOrder.symbol, ods.orderId)
                 continue
             sumQ += ods.origQty
