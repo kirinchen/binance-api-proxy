@@ -4,14 +4,16 @@ from typing import List
 
 
 def random_chars(count: int) -> str:
-    letters = string.ascii_letters
+    letters = string.ascii_letters+string.digits
     oid = (''.join(random.choice(letters) for i in range(count)))
     return oid
 
 
 def get_order_cid(tags: List[str]) -> str:
-    tags.sort()
-    shows = '-'.join(tags)
+    _ts = [t for t in tags]
+    _ts.append(random_chars(5))
+    _ts.sort()
+    shows = '-'.join(_ts)
     return '_' + shows + '_'
 
 

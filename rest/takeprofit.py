@@ -217,16 +217,15 @@ class Runner:
 
     def run_by_side(self, side: str):
         map: Dict[Symbol, CutOrder] = self.cutOrderMap[side]
-        for e in Symbol:
-            e: Symbol = e
-            map[e].cut(self.client, self.payload)
+        for k, v in map.items():
+            v.cut(self.client, self.payload)
 
     def _collect_positions(self):
         for pos in self.positions:
             if pos.positionAmt <= 0:
                 continue
             symbol = Symbol.get_with_usdt(pos.symbol)
-            self.cutOrderMap[pos.positionSide][symbol] = CutOrder(pos, self.payload.tags, symbol)
+            self.cutOrderMap[pos.positionSide][symbol] = CutOrder(pos, symbol, self.payload.tags, self.openOrders)
 
 
 def run(client: RequestClient, payload: dict):
