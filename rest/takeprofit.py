@@ -8,8 +8,10 @@ from binance_f.model import AccountInformation, Position, Order, PositionSide, O
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.f6750ff5cdca439ab3f675020fe7c12f  get position
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.29d904609c7e464ab7327d7bef7d9b93  get open orders
 from market.Symbol import Symbol
-from rest import post_order, cancel_order
+from rest import post_order, cancel_order, get_open_orders
+from rest.get_open_orders import OrderFilter
 from rest.poxy_controller import PayloadReqKey
+from utils.comm_utils import get_order_cid
 
 
 class AmtPrice:
@@ -24,10 +26,11 @@ class ProfitEnoughError(Exception):
 
 
 class Payload:
-    def __init__(self, profitRate: float, topRate: float, cutCount: int):
+    def __init__(self, profitRate: float, topRate: float, cutCount: int, tags: List[str]):
         self.profitRate = profitRate
         self.topRate = topRate
         self.cutCount = cutCount
+        self.tags = tags
 
 
 class PositionOrders:
@@ -39,18 +42,24 @@ class PositionOrders:
 
 class CutOrder:
 
-    def __init__(self):
-        self.position: Position = None
-        self.stopOrders: List[Order] = list()
-        self.logic: CutLogic = None
-        self.symbol: Symbol = None
+    # def __init__(self):
+    #     self.position: Position = None
+    #     self.stopOrders: List[Order] = list()
+    #     self.logic: CutLogic = None
+    #     self.symbol: Symbol = None
 
-    def setup_position(self, pos: Position, symbol: Symbol):
+    def __init__(self, pos: Position, symbol: Symbol, tags: List[str], orders: List[Order]):
         if pos.positionAmt <= 0:
             return
         self.position = pos
         self.symbol = symbol
         self.logic = gen_cut_logic(self)
+        self.stopOrders = get_open_orders.filter_order(orders, OrderFilter(
+            symbol=self.symbol.symbol,
+            side=self.logic.get_stop_side(),
+            orderType=OrderType.STOP_MARKET,
+            tags=tags
+        ))
 
     def cut(self, client: RequestClient, payload: Payload):
         if self.position and self.logic:
@@ -104,6 +113,7 @@ class CutLogic(metaclass=ABCMeta):
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
                                               stop_side=self.get_stop_side(),
                                               stopPrice=sp,
+                                              oid=get_order_cid(payload.tags),
                                               quantity=self.stepQuantity)
             self.cutOrder.stopOrders.append(nods)
         self.clean_over_order(client)
@@ -197,10 +207,9 @@ class Runner:
         self.positions: List[Position] = client.get_position()
         self.openOrders: List[Order] = client.get_open_orders()
         self.cutOrderMap: Dict[str, Dict[Symbol, CutOrder]] = dict()
-        self.cutOrderMap[PositionSide.LONG] = Runner._gen_symbol_cutorders()
-        self.cutOrderMap[PositionSide.SHORT] = Runner._gen_symbol_cutorders()
+        self.cutOrderMap[PositionSide.LONG] = dict()
+        self.cutOrderMap[PositionSide.SHORT] = dict()
         self._collect_positions()
-        self._collect_orders()
 
     def run_all(self):
         self.run_by_side(PositionSide.LONG)
@@ -212,32 +221,12 @@ class Runner:
             e: Symbol = e
             map[e].cut(self.client, self.payload)
 
-    @staticmethod
-    def _gen_symbol_cutorders() -> Dict[Symbol, CutOrder]:
-        ans: Dict[Symbol, CutOrder] = dict()
-        for sbl in Symbol:
-            ans[sbl] = CutOrder()
-        return ans
-
     def _collect_positions(self):
         for pos in self.positions:
-            try:
-                symbol = Symbol.get_with_usdt(pos.symbol)
-                self.cutOrderMap[pos.positionSide][symbol].setup_position(pos, symbol)
-            except KeyError:
-                print("dont work")
-
-    def _collect_orders(self):
-        for ods in self.openOrders:
-            if ods.type != OrderType.STOP_MARKET:
+            if pos.positionAmt <= 0:
                 continue
-            try:
-                symbol = Symbol.get_with_usdt(ods.symbol)
-                side = ods.side
-                pside = PositionSide.LONG if side == OrderSide.SELL else PositionSide.SHORT
-                self.cutOrderMap[pside][symbol].stopOrders.append(ods)
-            except KeyError:
-                print("dont work")
+            symbol = Symbol.get_with_usdt(pos.symbol)
+            self.cutOrderMap[pos.positionSide][symbol] = CutOrder(pos, self.payload.tags, symbol)
 
 
 def run(client: RequestClient, payload: dict):

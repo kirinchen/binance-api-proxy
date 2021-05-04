@@ -2,6 +2,7 @@ import string
 from enum import Enum
 import uuid
 import random
+from typing import List
 
 from binance_f import RequestClient
 from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
@@ -9,30 +10,21 @@ from market.Symbol import Symbol
 from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
+from utils.comm_utils import get_order_cid
 
 
 class Payload:
 
-    def __init__(self, investedRate: float, guardRange: float, symbol: str, selled: bool, quote: float = None,
+    def __init__(self, tags: List[str], investedRate: float, guardRange: float, symbol: str, selled: bool,
+                 quote: float = None,
                  currentMove: float = None):
         self.investedRate = investedRate
         self.guardRange = guardRange
         self.quote = quote
         self.symbol: Symbol = Symbol.get(symbol)
         self.selled = selled
+        self.tags = tags
         self.currentMove = currentMove
-
-
-# class PayloadKey(Enum):
-#     investedRate = 'investedRate'  # 0.5
-#     guardRange = 'guardRange'  # 0.02
-#     quote = 'quote'  # 600
-#     symbol = 'symbol'  # ETC BTC
-#     selled = 'selled'  # True / False
-#
-#
-# def _get_val(payload: dict, k: PayloadKey):
-#     return payload[k.value]
 
 
 def fix_precision(p: int, fv: float):
@@ -69,7 +61,7 @@ def run(client: RequestClient, payload: dict):
 
     order_position = PositionSide.SHORT if pl.selled else PositionSide.LONG
 
-    oid = 'rob_' + comm_utils.random_chars(8)
+    oid = get_order_cid(pl.tags)
     price = fix_precision(pl.symbol.precision_price, quote)
     quantity_str = fix_precision(pl.symbol.precision_amount, quantity)
     result = client.post_order(price=price,
@@ -84,7 +76,7 @@ def run(client: RequestClient, payload: dict):
                                quantity=quantity_str,
                                newClientOrderId=oid
                                )
-    post_stop_order(client, stop_side, pl.symbol, max_stop, quantity)
+    post_stop_order(client, oid, stop_side, pl.symbol, max_stop, quantity)
 
     return {
         "price": price,
@@ -93,7 +85,8 @@ def run(client: RequestClient, payload: dict):
     }
 
 
-def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopPrice: float, quantity: float) -> Order:
+def post_stop_order(client: RequestClient, oid: str, stop_side: str, symbol: Symbol, stopPrice: float,
+                    quantity: float) -> Order:
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
@@ -106,7 +99,7 @@ def post_stop_order(client: RequestClient, stop_side: str, symbol: Symbol, stopP
         stopPrice=stopPrice,
         # closePosition=False,
         quantity=quantity,
-        newClientOrderId="rob_stp_" + comm_utils.random_chars(8)
+        newClientOrderId=oid
     )
     return result
 

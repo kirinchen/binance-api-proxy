@@ -17,7 +17,7 @@ class Symbol(Enum):
     EOS = ('EOS', 3, 1)
     BNB = ('BNB', 3, 2)
 
-    def get_with_usdt(self):
+    def gen_with_usdt(self)->str:
         return f'{self.symbol}USDT'
 
     @classmethod
@@ -39,3 +39,5 @@ class Symbol(Enum):
         if s == 'BTC':
             print(s)
         return Symbol.get(s)
+
+
