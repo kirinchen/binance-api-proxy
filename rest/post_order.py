@@ -1,7 +1,4 @@
-import string
-from enum import Enum
-import uuid
-import random
+
 from typing import List
 
 from binance_f import RequestClient
@@ -9,7 +6,6 @@ from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, Posi
 from market.Symbol import Symbol
 from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
-from utils import comm_utils
 from utils.comm_utils import get_order_cid
 
 
