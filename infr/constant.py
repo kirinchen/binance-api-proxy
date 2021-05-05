@@ -1,0 +1,1 @@
+STOP_MARKET_AUTO_LOSS_TAG = 'autoLoss'

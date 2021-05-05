@@ -113,7 +113,7 @@ class CutLogic(metaclass=ABCMeta):
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
                                               stop_side=self.get_stop_side(),
                                               stopPrice=sp,
-                                              oid=get_order_cid(payload.tags),
+                                              tags=payload.tags,
                                               quantity=self.stepQuantity)
             self.cutOrder.stopOrders.append(nods)
         self.clean_over_order(client)

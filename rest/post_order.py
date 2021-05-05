@@ -3,9 +3,11 @@ from typing import List
 
 from binance_f import RequestClient
 from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
+from infr import constant
 from market.Symbol import Symbol
 from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
+from utils import comm_utils
 from utils.comm_utils import get_order_cid
 
 
@@ -81,10 +83,12 @@ def run(client: RequestClient, payload: dict):
     }
 
 
-def post_stop_order(client: RequestClient, oid: str, stop_side: str, symbol: Symbol, stopPrice: float,
+def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symbol: Symbol, stopPrice: float,
                     quantity: float) -> Order:
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
+    _tgs = [e for e in tags]
+    _tgs.append(constant.STOP_MARKET_AUTO_LOSS_TAG)
     result = client.post_order(
         side=stop_side,
         symbol=f'{symbol.symbol}USDT',
@@ -95,7 +99,7 @@ def post_stop_order(client: RequestClient, oid: str, stop_side: str, symbol: Sym
         stopPrice=stopPrice,
         # closePosition=False,
         quantity=quantity,
-        newClientOrderId=oid
+        newClientOrderId=comm_utils.get_order_cid(_tgs)
     )
     return result
 
