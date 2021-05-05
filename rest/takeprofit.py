@@ -8,10 +8,10 @@ from binance_f.model import AccountInformation, Position, Order, PositionSide, O
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.f6750ff5cdca439ab3f675020fe7c12f  get position
 # https://jsoneditoronline.org/#right=local.loviyo&left=cloud.29d904609c7e464ab7327d7bef7d9b93  get open orders
 from market.Symbol import Symbol
-from rest import post_order, cancel_order, get_open_orders
-from rest.get_open_orders import OrderFilter
+from rest import post_order, cancel_order
 from rest.poxy_controller import PayloadReqKey
 from utils.comm_utils import get_order_cid
+from utils.order_utils import OrderFilter, filter_order
 
 
 class AmtPrice:
@@ -54,12 +54,12 @@ class CutOrder:
         self.position = pos
         self.symbol = symbol
         self.logic = gen_cut_logic(self)
-        self.stopOrders = get_open_orders.filter_order(orders, OrderFilter(
+        self.stopOrders = filter_order(orders, OrderFilter(
             symbol=self.symbol.symbol,
             side=self.logic.get_stop_side(),
             orderType=OrderType.STOP_MARKET,
             tags=tags
-        ))
+        )).orders
 
     def cut(self, client: RequestClient, payload: Payload):
         if self.position and self.logic:

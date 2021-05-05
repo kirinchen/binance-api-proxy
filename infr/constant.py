@@ -1,1 +1,2 @@
 STOP_MARKET_AUTO_LOSS_TAG = 'autoLoss'
+ORDER_CLASSIFLY_KEY = 'classify'
