@@ -12,11 +12,13 @@ from utils import comm_utils
 
 class OrderFilter:
 
-    def __init__(self, symbol: str = None, side: str = None, orderType: str = None, tags: List[str] = list()):
+    def __init__(self, symbol: str = None, side: str = None, orderType: str = None, tags: List[str] = list(),
+                 status: str = None):
         self.symbol = symbol
         self.side = side
         self.tags = tags
         self.orderType = orderType
+        self.status = status
 
     def get_symbole(self):
         return Symbol.get(self.symbol)
@@ -28,7 +30,7 @@ class SubtotalBundle:
         self.orders: List[Order] = list()
 
     def subtotal(self):
-        if len(self.orders) <=0:
+        if len(self.orders) <= 0:
             return
         self.orders.sort(key=lambda s: s.updateTime, reverse=True)
         ups = self.orders[0].updateTime / 1000
@@ -54,9 +56,11 @@ class StatusMap:
 
 def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
     PayloadReqKey.clean_default_keys(payload)
+    cb: bool = payload.get(ORDER_CLASSIFLY_KEY,False)
+    if ORDER_CLASSIFLY_KEY in payload:
+        del payload[ORDER_CLASSIFLY_KEY]
     pl = OrderFilter(**payload)
     result = filter_order(oods, pl)
-    cb: bool = payload.get(ORDER_CLASSIFLY_KEY)
     if cb:
         cmap = classify_by_status(result)
         return cmap.to_struct()
@@ -72,6 +76,8 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
         if ft.side and ods.side != ft.side:
             continue
         if ft.symbol and ft.get_symbole().gen_with_usdt() != ods.symbol:
+            continue
+        if ft.status and ft.status != ods.status:
             continue
         if len(ft.tags) > 0 and not comm_utils.contains_tags(ods.clientOrderId, ft.tags):
             continue

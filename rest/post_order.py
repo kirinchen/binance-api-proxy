@@ -74,7 +74,9 @@ def run(client: RequestClient, payload: dict):
                                quantity=quantity_str,
                                newClientOrderId=oid
                                )
-    post_stop_order(client, oid, stop_side, pl.symbol, max_stop, quantity)
+    tags = pl.tags
+    tags.append(constant.STOP_MARKET_AUTO_LOSS_TAG)
+    post_stop_order(client, tags, stop_side, pl.symbol, max_stop, quantity)
 
     return {
         "price": price,
@@ -87,8 +89,6 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symb
                     quantity: float) -> Order:
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
-    _tgs = [e for e in tags]
-    _tgs.append(constant.STOP_MARKET_AUTO_LOSS_TAG)
     result = client.post_order(
         side=stop_side,
         symbol=f'{symbol.symbol}USDT',
@@ -99,7 +99,7 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symb
         stopPrice=stopPrice,
         # closePosition=False,
         quantity=quantity,
-        newClientOrderId=comm_utils.get_order_cid(_tgs)
+        newClientOrderId=comm_utils.get_order_cid(tags)
     )
     return result
 
