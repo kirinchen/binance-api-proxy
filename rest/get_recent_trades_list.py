@@ -15,6 +15,7 @@ from rest.poxy_controller import PayloadReqKey
 # PrintMix.print_data(result)
 # print("==================================")
 from utils import trade_utils
+from utils.trade_utils import Result
 
 
 def run(client: RequestClient, payload: dict):
@@ -28,4 +29,4 @@ def run(client: RequestClient, payload: dict):
 def fetch(client: RequestClient, sbl: Symbol, limit: int) -> Result:
     result: List[Trade] = client.get_recent_trades_list(symbol=f'{sbl.symbol}USDT', limit=limit)
     ans = trade_utils.gen_subtotal_result(result)
-    return ans.to_struct()
+    return ans
