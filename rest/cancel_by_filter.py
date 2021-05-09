@@ -1,5 +1,7 @@
 from typing import List
 
+from binance_f.exception.binanceapiexception import BinanceApiException
+
 from binance_f import RequestClient
 from binance_f.constant.test import *
 from binance_f.base.printobject import *
@@ -17,12 +19,17 @@ from utils import comm_utils
 
 
 def run(client: RequestClient, payload: dict):
-    PayloadReqKey.clean_default_keys(payload)
-    pl = OrderFilter(**payload)
+    try:
+        PayloadReqKey.clean_default_keys(payload)
+        pl = OrderFilter(**payload)
 
-    olist = get_open_orders.filter_order(client.get_open_orders(pl.get_symbole().gen_with_usdt()), pl)
-    ids = [e.orderId for e in olist.orders]
+        olist = get_open_orders.filter_order(client.get_open_orders(pl.get_symbole().gen_with_usdt()), pl)
+        ids = [e.orderId for e in olist.orders]
 
-    result = client.cancel_list_orders(symbol=pl.get_symbole().gen_with_usdt(),
-                                       orderIdList=ids)
-    return comm_utils.to_struct_list(result)
+        result = client.cancel_list_orders(symbol=pl.get_symbole().gen_with_usdt(),
+                                           orderIdList=ids)
+        return comm_utils.to_struct_list(result)
+    except BinanceApiException as e: # work on python 3.x
+        print('Failed to upload to ftp: '+ str(e))
+        return e.__dict__
+
