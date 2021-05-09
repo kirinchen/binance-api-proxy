@@ -21,7 +21,7 @@ def run(client: RequestClient, payload: dict):
     pl = OrderFilter(**payload)
 
     olist = get_open_orders.filter_order(client.get_open_orders(pl.get_symbole().gen_with_usdt()), pl)
-    ids = [e.orderId for e in olist]
+    ids = [e.orderId for e in olist.orders]
 
     result = client.cancel_list_orders(symbol=pl.get_symbole().gen_with_usdt(),
                                        orderIdList=ids)
