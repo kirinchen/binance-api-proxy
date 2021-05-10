@@ -8,7 +8,7 @@ from market.Symbol import Symbol
 from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
-from utils.comm_utils import get_order_cid
+from utils.comm_utils import get_order_cid, gen_group_uid
 
 
 class Payload:
@@ -59,6 +59,8 @@ def run(client: RequestClient, payload: dict):
 
     order_position = PositionSide.SHORT if pl.selled else PositionSide.LONG
 
+    gid = gen_group_uid()
+    pl.tags.append(gid)
     oid = get_order_cid(pl.tags)
     price = fix_precision(pl.symbol.precision_price, quote)
     quantity_str = fix_precision(pl.symbol.precision_amount, quantity)
