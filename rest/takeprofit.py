@@ -26,11 +26,10 @@ class ProfitEnoughError(Exception):
 
 
 class Payload:
-    def __init__(self, profitRate: float, topRate: float, cutCount: int, tags: List[str]):
+    def __init__(self, profitRate: float, topRate: float, cutCount: int):
         self.profitRate = profitRate
         self.topRate = topRate
         self.cutCount = cutCount
-        self.tags = tags
 
 
 class PositionOrders:
@@ -48,7 +47,7 @@ class CutOrder:
     #     self.logic: CutLogic = None
     #     self.symbol: Symbol = None
 
-    def __init__(self, pos: Position, symbol: Symbol, tags: List[str], orders: List[Order]):
+    def __init__(self, pos: Position, symbol: Symbol,  orders: List[Order]):
         if pos.positionAmt <= 0:
             return
         self.position = pos
@@ -57,8 +56,7 @@ class CutOrder:
         self.stopOrders = filter_order(orders, OrderFilter(
             symbol=self.symbol.symbol,
             side=self.logic.get_stop_side(),
-            orderType=OrderType.STOP_MARKET,
-            tags=tags
+            orderType=OrderType.STOP_MARKET
         )).orders
 
     def cut(self, client: RequestClient, payload: Payload):
@@ -119,7 +117,7 @@ class CutLogic(metaclass=ABCMeta):
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
                                               stop_side=self.get_stop_side(),
                                               stopPrice=sp,
-                                              tags=payload.tags,
+                                              tags=['stop'],
                                               quantity=self.stepQuantity)
             self.cutOrder.stopOrders.append(nods)
         self.clean_over_order(client)
@@ -239,7 +237,7 @@ class Runner:
             if pos.positionAmt <= 0:
                 continue
             symbol = Symbol.get_with_usdt(pos.symbol)
-            self.cutOrderMap[pos.positionSide][symbol] = CutOrder(pos, symbol, self.payload.tags, self.openOrders)
+            self.cutOrderMap[pos.positionSide][symbol] = CutOrder(pos, symbol,  self.openOrders)
 
 
 def run(client: RequestClient, payload: dict):
