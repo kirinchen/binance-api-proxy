@@ -12,7 +12,8 @@ from utils import comm_utils
 
 class OrderFilter:
 
-    def __init__(self, symbol: str = None, side: str = None, orderType: str = None, tags: List[str] = list(),
+    def __init__(self, symbol: str = None, side: str = None, orderType: str = None, notOrderType: str = None,
+                 tags: List[str] = list(),
                  excludeTags: List[str] = list(),
                  status: str = None):
         self.symbol = symbol
@@ -20,6 +21,7 @@ class OrderFilter:
         self.tags = tags
         self.excludeTags = excludeTags
         self.orderType = orderType
+        self.notOrderType = notOrderType
         self.status = status
 
     def get_symbole(self):
@@ -75,6 +77,8 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
     for ods in oods:
         if ft.orderType and ods.type != ft.orderType:
             continue
+        if ft.notOrderType and ods.type == ft.notOrderType:
+            continue
         if ft.side and ods.side != ft.side:
             continue
         if ft.symbol and ft.get_symbole().gen_with_usdt() != ods.symbol:
@@ -107,9 +111,9 @@ EMPTY_TAG = '==EMPTY=='
 def classify_by_group(ods: List[Order]) -> Dict[str, List[Order]]:
     ans = dict();
     for od in ods:
-        guid = comm_utils.parse_group_uid(comm_utils.parse_tags( od.clientOrderId))
+        guid = comm_utils.parse_group_uid(comm_utils.parse_tags(od.clientOrderId))
         k = EMPTY_TAG if guid is None else guid
-        if k not in ans :
+        if k not in ans:
             ans[k] = list()
         ans[k].append(od)
     return ans

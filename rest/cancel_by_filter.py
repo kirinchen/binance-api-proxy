@@ -1,11 +1,10 @@
-from typing import List, Dict
+from typing import List
 
 from binance_f.exception.binanceapiexception import BinanceApiException
 
 from binance_f import RequestClient
 from binance_f.constant.test import *
 from binance_f.base.printobject import *
-from binance_f.model import Order
 from binance_f.model.constant import *
 
 # request_client = RequestClient(api_key=g_api_key, secret_key=g_secret_key)
@@ -16,7 +15,7 @@ from market.Symbol import Symbol
 from rest import get_open_orders
 from rest.get_open_orders import OrderFilter
 from rest.poxy_controller import PayloadReqKey
-from utils import comm_utils, order_utils
+from utils import comm_utils
 
 
 def run(client: RequestClient, payload: dict):
@@ -25,20 +24,13 @@ def run(client: RequestClient, payload: dict):
         pl = OrderFilter(**payload)
 
         olist = get_open_orders.filter_order(client.get_open_orders(pl.get_symbole().gen_with_usdt()), pl)
-        sp_grp_ods: Dict[str, List[Order]] = order_utils.classify_by_group(olist.orders)
-        ids = list()
-        for grp, ods in sp_grp_ods.items():
-            if grp == order_utils.EMPTY_TAG:
-                ids.extend([o.orderId for o in ods])
-            else:
-                if len(ods) >= 2:
-                    ids.extend([o.orderId for o in ods])
-                elif len(ods) == 1 and ods[0].type != OrderType.STOP_MARKET:
-                    ids.append(ods[0].orderId)
+
+        ids = [e.orderId for e in olist.orders]
 
         result = client.cancel_list_orders(symbol=pl.get_symbole().gen_with_usdt(),
                                            orderIdList=ids)
         return comm_utils.to_struct_list(result)
-    except BinanceApiException as e:  # work on python 3.x
-        print('Failed to upload to ftp: ' + str(e))
+    except BinanceApiException as e: # work on python 3.x
+        print('Failed to upload to ftp: '+ str(e))
         return e.__dict__
+
