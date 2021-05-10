@@ -147,7 +147,7 @@ class CutLogic(metaclass=ABCMeta):
 class LongCutLogic(CutLogic):
 
     def sort_amt_price(self, aps: List[AmtPrice]):
-        aps.sort(key=lambda s: s.price)
+        aps.sort(key=lambda s: -s.price)
 
     def get_stop_side(self) -> str:
         return OrderSide.SELL
