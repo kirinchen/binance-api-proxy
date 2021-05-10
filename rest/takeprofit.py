@@ -76,6 +76,12 @@ class CutLogic(metaclass=ABCMeta):
         self.stepPrices = list()
         self.stepQuantity = 0
 
+    def get_maker_fee(self):
+        return self.cutOrder.position.positionAmt * self.entryPrice * 0.0002
+
+    def get_taker_fee(self):
+        return self.cutOrder.position.positionAmt * self.markPrice * 0.0004
+
     def _calc_bundle(self, payload: Payload):
         self.profitRate = self.calc_profit_rate()
         if self.profitRate < payload.profitRate:
@@ -135,8 +141,16 @@ class CutLogic(metaclass=ABCMeta):
     def get_stop_side(self) -> str:
         pass
 
-    @abstractmethod
     def calc_profit_rate(self) -> float:
+        spread = self.markPrice - self.entryPrice
+        fee = self.get_maker_fee() + self.get_taker_fee()
+        pprofit = spread * self.cutOrder.position.positionAmt
+        profit = pprofit - fee
+        cost = (self.cutOrder.position.positionAmt * self.entryPrice) / self.cutOrder.position.leverage
+        return profit / cost
+
+    @abstractmethod
+    def get_spread(self) -> float:
         pass
 
     @abstractmethod
@@ -145,6 +159,12 @@ class CutLogic(metaclass=ABCMeta):
 
 
 class LongCutLogic(CutLogic):
+
+    def __init__(self, cd: CutOrder):
+        super().__init__(cd)
+
+    def get_spread(self) -> float:
+        return self.markPrice - self.entryPrice
 
     def sort_amt_price(self, aps: List[AmtPrice]):
         aps.sort(key=lambda s: -s.price)
@@ -161,14 +181,14 @@ class LongCutLogic(CutLogic):
             ans.append(p)
         return ans
 
-    def calc_profit_rate(self) -> float:
-        return ((self.markPrice - self.entryPrice) / self.entryPrice) * self.cutOrder.position.leverage
+
+class ShortCutLogic(CutLogic):
 
     def __init__(self, cd: CutOrder):
         super().__init__(cd)
 
-
-class ShortCutLogic(CutLogic):
+    def get_spread(self) -> float:
+        return self.entryPrice - self.markPrice
 
     def sort_amt_price(self, aps: List[AmtPrice]):
         aps.sort(key=lambda s: s.price, reverse=True)
@@ -184,12 +204,6 @@ class ShortCutLogic(CutLogic):
 
     def get_stop_side(self) -> str:
         return OrderSide.BUY
-
-    def __init__(self, cd: CutOrder):
-        super().__init__(cd)
-
-    def calc_profit_rate(self) -> float:
-        return (self.entryPrice - self.markPrice) / self.entryPrice
 
 
 def gen_cut_logic(cd: CutOrder) -> CutLogic:
