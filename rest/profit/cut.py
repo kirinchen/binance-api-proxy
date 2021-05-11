@@ -25,7 +25,7 @@ class ProfitEnoughError(Exception):
     pass
 
 
-class Payload:
+class CutProfitDto:
     def __init__(self, profitRate: float, topRate: float, cutCount: int):
         self.profitRate = profitRate
         self.topRate = topRate
@@ -59,7 +59,7 @@ class CutOrder:
             orderType=OrderType.STOP_MARKET
         )).orders
 
-    def cut(self, client: RequestClient, payload: Payload):
+    def cut(self, client: RequestClient, payload: CutProfitDto):
         if self.position and self.logic:
             self.logic.cut(client, payload)
 
@@ -80,7 +80,7 @@ class CutLogic(metaclass=ABCMeta):
     def get_taker_fee(self):
         return self.cutOrder.position.positionAmt * self.markPrice * 0.0004
 
-    def _calc_bundle(self, payload: Payload):
+    def _calc_bundle(self, payload: CutProfitDto):
         self.profitRate = self.calc_profit_rate()
         if self.profitRate < payload.profitRate:
             raise ProfitEnoughError(str(self.profitRate) + '<' + str(payload.profitRate))
@@ -109,7 +109,7 @@ class CutLogic(metaclass=ABCMeta):
         self.sort_amt_price(ans)
         return ans
 
-    def cut(self, client: RequestClient, payload: Payload):
+    def cut(self, client: RequestClient, payload: CutProfitDto):
         try:
             self._calc_bundle(payload)
         except ProfitEnoughError:
@@ -215,7 +215,7 @@ def gen_cut_logic(cd: CutOrder) -> CutLogic:
 
 class Runner:
 
-    def __init__(self, client: RequestClient, payload: Payload):
+    def __init__(self, client: RequestClient, payload: CutProfitDto):
         self.payload = payload
         self.client = client
         self.positions: List[Position] = client.get_position()
@@ -244,7 +244,7 @@ class Runner:
 
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
-    pl = Payload(**payload)
+    pl = CutProfitDto(**payload)
     runner = Runner(client, pl)
     runner.run_all()
     return {}

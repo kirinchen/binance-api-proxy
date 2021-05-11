@@ -117,3 +117,10 @@ def classify_by_group(ods: List[Order]) -> Dict[str, List[Order]]:
             ans[k] = list()
         ans[k].append(od)
     return ans
+
+
+def sum_amt(ods: List[Order]) -> float:
+    ans = 0
+    for od in ods:
+        ans += od.origQty
+    return ans
