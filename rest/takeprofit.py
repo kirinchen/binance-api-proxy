@@ -88,6 +88,8 @@ class CutLogic(metaclass=ABCMeta):
         sp = self.calc_step_prices(payload.cutCount, payload.topRate)
         self._add_step_prices(sp)
 
+    #TODO stepQuantity move tp _add_step_prices
+
     def _add_step_prices(self, ps: List[float]):
         sumQ = 0.0
         aps = self._list_amt_price(ps)
