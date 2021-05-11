@@ -1,12 +1,13 @@
 import json
 import os
+from contextlib import contextmanager
 from enum import Enum
 from os import environ
 
 from flask import Flask, Response
 from flask import request
 
-from binance_f import RequestClient
+from binance_f import RequestClient, SubscriptionClient
 
 import importlib.util
 
@@ -43,12 +44,23 @@ def proxy():
     spec = importlib.util.spec_from_file_location("action", f"{wd_path}/{payload.get(PayloadReqKey.name.value)}.py")
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    return Response(json.dumps(foo.run(client, payload)),  mimetype='application/json')
+    return Response(json.dumps(foo.run(client, payload)), mimetype='application/json')
 
 
 def _gen_request_client(payload: dict) -> RequestClient:
     return RequestClient(api_key=payload.get(PayloadReqKey.apiKey.value),
                          secret_key=payload.get(PayloadReqKey.secret.value))
+
+
+@contextmanager
+def gen_ws_client(payload: dict) -> SubscriptionClient:
+    sub_client = SubscriptionClient(api_key=payload.get(PayloadReqKey.apiKey.value),
+                                    secret_key=payload.get(PayloadReqKey.secret.value))
+    try:
+        yield sub_client
+    finally:
+        pass
+        sub_client.unsubscribe_all()
 
 
 def get_flask_app():

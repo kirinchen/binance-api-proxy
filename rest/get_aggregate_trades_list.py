@@ -15,5 +15,5 @@ def run(client: RequestClient, payload: dict):
     startTime = payload.get('startTime')
     endTime = payload.get('endTime')
     result = client.get_aggregate_trades_list(symbol= sbl.gen_with_usdt(),startTime=startTime,endTime=endTime)
-    ans = trade_utils.gen_subtotal_result(result)
+    ans = trade_utils.gen_subtotal_result( trade_utils.convert_traded_info( result))
     return ans.to_struct()
