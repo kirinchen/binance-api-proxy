@@ -5,20 +5,9 @@ from binance_f import RequestClient
 from binance_f.model import OrderSide, PositionSide, Order
 from infr.constant import MAKER_FEE, TAKER_FEE
 from rest import post_order, cancel_order
-from rest.profit.cut import CutProfitDto
 from rest.profit.profit_cuter import ProfitCuter
+
 from utils import order_utils
-
-
-class AmtPrice:
-    def __init__(self, amt: float, price: float, newed: bool = False):
-        self.amt = amt
-        self.price = price
-        self.newed = newed
-
-
-class ProfitEnoughException(Exception):
-    pass
 
 
 class CutLogic(metaclass=ABCMeta):
@@ -27,8 +16,11 @@ class CutLogic(metaclass=ABCMeta):
         self.cutOrder = cd
         self.markPrice = self.cutOrder.position.markPrice
         self.entryPrice = self.cutOrder.position.entryPrice
-        self.currentOds: List[Order] = self.cutOrder.stopOrders
         self.profitRate = self.calc_profit_rate()
+        self.stepQuantity: float = (self.cutOrder.position.positionAmt * 1.00086) / self.cutOrder.payload.cutCount
+
+    def setup_current_orders(self):
+        self.currentOds: List[Order] = self.cutOrder.stopOrders
         self.sort_soon_orders()
 
     def get_maker_fee(self):
@@ -40,7 +32,6 @@ class CutLogic(metaclass=ABCMeta):
     def calc_current_soon_stop_price(self):
         return self.currentOds[0].stopPrice
 
-
     def is_rebuild_stop_orders(self) -> bool:
 
         if self.profitRate < self.cutOrder.payload.profitRate:
@@ -50,52 +41,23 @@ class CutLogic(metaclass=ABCMeta):
         current_stop_sum_amt = order_utils.sum_amt(self.cutOrder.stopOrders)
         if current_stop_sum_amt < self.cutOrder.position.positionAmt:
             return True
+        if self.check_over_soon_order():
+            return True
 
         return False
 
-    def _calc_bundle(self, payload: CutProfitDto):
-        self.profitRate = self.calc_profit_rate()
-        if self.profitRate < payload.profitRate:
-            raise ProfitEnoughException(str(self.profitRate) + '<' + str(payload.profitRate))
-        self.stepQuantity = self.cutOrder.position.positionAmt / payload.cutCount
-        sp = self.calc_step_prices(payload.cutCount, payload.topRate)
-        self._add_step_prices(sp)
-
-    # TODO stepQuantity move tp _add_step_prices
-
-    def _add_step_prices(self, ps: List[float]):
-        sumQ = 0.0
-        aps = self._list_amt_price(ps)
-        for p in aps:
-            if sumQ > self.cutOrder.position.positionAmt:
-                return
-            if p.newed:
-                self.stepPrices.append(p.price)
-            sumQ += p.amt
-
-    def _list_amt_price(self, ps: List[float]) -> List[AmtPrice]:
-        ans: List[AmtPrice] = list()
-        for p in ps:
-            ans.append(AmtPrice(self.stepQuantity, p, True))
-        for ods in self.cutOrder.stopOrders:
-            ans.append(AmtPrice(ods.origQty, ods.stopPrice, False))
-        self.sort_amt_price(ans)
-        return ans
-
-    def cut(self, client: RequestClient, payload: CutProfitDto):
-        try:
-            self._calc_bundle(payload)
-        except ProfitEnoughException:
-            print("not over th")
+    def cut(self, client: RequestClient):
+        if not self.is_rebuild_stop_orders():
             return
-        for sp in self.stepPrices:
+        for sp in self.calc_step_prices():
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
                                               stop_side=self.get_stop_side(),
                                               stopPrice=sp,
                                               tags=['stop'],
                                               quantity=self.stepQuantity)
-            self.cutOrder.stopOrders.append(nods)
-        self.clean_over_order(client)
+
+        result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
+                                           orderIdList=[od.orderId for od in self.currentOds])
 
     def clean_over_order(self, client: RequestClient):
         self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
@@ -106,10 +68,9 @@ class CutLogic(metaclass=ABCMeta):
                 continue
             sumQ += ods.origQty
 
-
-    def calc_new_soon_stop_price(self):
-        steps = self.calc_step_prices()
-
+    @abstractmethod
+    def check_over_soon_order(self):
+        pass
 
     @abstractmethod
     def sort_soon_orders(self):
@@ -138,12 +99,13 @@ class CutLogic(metaclass=ABCMeta):
 
 class LongCutLogic(CutLogic):
 
-
-
     def __init__(self, cd: ProfitCuter):
         super().__init__(cd)
 
-
+    def check_over_soon_order(self):
+        new_soon_price = self.calc_step_prices()[0]
+        old_soon_price = self.currentOds[0].stopPrice
+        return new_soon_price > old_soon_price
 
     def sort_soon_orders(self):
         self.currentOds.sort(key=lambda s: -s.stopPrice)
@@ -154,42 +116,42 @@ class LongCutLogic(CutLogic):
     def get_stop_side(self) -> str:
         return OrderSide.SELL
 
-    def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
+    def calc_step_prices(self) -> List[float]:
         ans: List[float] = list()
-        dp = (self.markPrice - self.entryPrice) * topRate
-        dsp = dp / cutCount
-        for i in range(cutCount):
+        dp = (self.markPrice - self.entryPrice) * self.cutOrder.payload.topRate
+        dsp = dp / self.cutOrder.payload.cutCount
+        for i in range(self.cutOrder.payload.cutCount):
             p = (dsp * (i + 1)) + self.entryPrice
             ans.append(p)
+        ans.reverse()
         return ans
 
 
 class ShortCutLogic(CutLogic):
 
+    def sort_soon_orders(self):
+        self.currentOds.sort(key=lambda s: s.stopPrice)
+
     def __init__(self, cd: ProfitCuter):
         super().__init__(cd)
+
+    def check_over_soon_order(self):
+        new_soon_price = self.calc_step_prices()[0]
+        old_soon_price = self.currentOds[0].stopPrice
+        return new_soon_price < old_soon_price
 
     def get_spread(self) -> float:
         return self.entryPrice - self.markPrice
 
-    def sort_amt_price(self, aps: List[AmtPrice]):
-        aps.sort(key=lambda s: s.price, reverse=True)
-
-    def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
+    def calc_step_prices(self) -> List[float]:
         ans: List[float] = list()
-        dp = (self.entryPrice - self.markPrice) * topRate
-        dsp = dp / cutCount
-        for i in range(cutCount):
+        dp = (self.entryPrice - self.markPrice) * self.cutOrder.payload.topRate
+        dsp = dp / self.cutOrder.payload.cutCount
+        for i in range(self.cutOrder.payload.cutCount):
             p = (dsp * (i + 1)) + self.markPrice
             ans.append(p)
+        ans.reverse()
         return ans
 
     def get_stop_side(self) -> str:
         return OrderSide.BUY
-
-
-def gen_cut_logic(cd: ProfitCuter) -> CutLogic:
-    return {
-        PositionSide.LONG: LongCutLogic(cd),
-        PositionSide.SHORT: ShortCutLogic(cd)
-    }.get(cd.position.positionSide)
