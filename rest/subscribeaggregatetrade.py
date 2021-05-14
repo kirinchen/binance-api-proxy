@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Callable
 
 from binance_f import SubscriptionClient, RequestClient
 from binance_f.constant.test import *
@@ -20,39 +20,49 @@ handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s -
 logger.addHandler(handler)
 
 
-class Payload:
+class TrailTradeDto:
 
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, limit: int):
         self.symbol: Symbol = Symbol.get(symbol)
+        self.limit: int = limit
 
 
 def run(client: RequestClient, payload: dict):
     with gen_ws_client(payload) as sub_client:
         sub_client: SubscriptionClient = sub_client
-        latch = CountDownLatch(300)
-        tlist= TradeSet()
-
-        def callback(data_type: 'SubscribeMessageType', event: 'any'):
-            if data_type == SubscribeMessageType.RESPONSE:
-                print("Event ID: ", event)
-                # latch.count_down()
-            elif data_type == SubscribeMessageType.PAYLOAD:
-                event: AggregateTradeEvent = event
-                # PrintBasic.print_obj(event)
-                tlist.append(TradeEvent( event))
-                tlist.subtotal()
-                print(f's:{tlist.sell.totalAmount} b:{tlist.buy.totalAmount}')
-                latch.count_down()
-                # sub_client.unsubscribe_all()
-            else:
-                print("Unknown Data:")
-            print()
-
-        def error(e: 'BinanceApiException'):
-            print(e.error_code + e.error_message)
-
         PayloadReqKey.clean_default_keys(payload)
-        pl = Payload(**payload)
-        sub_client.subscribe_aggregate_trade_event(pl.symbol.gen_with_usdt().lower(), callback, error)
-        latch.wait()
+        pl = TrailTradeDto(**payload)
+
+        def check(ts: TradeSet) -> bool:
+            pl.limit = pl.limit - 1
+            return pl.limit <= 0
+
+        tlist = subscript(sub_client, pl.symbol)
         return tlist.to_struct()
+
+
+def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[TradeSet], bool]) -> TradeSet:
+    latch = CountDownLatch(1)
+    tlist = TradeSet()
+
+    def callback(data_type: 'SubscribeMessageType', event: 'any'):
+        if data_type == SubscribeMessageType.RESPONSE:
+            print("Event ID: ", event)
+            # latch.count_down()
+        elif data_type == SubscribeMessageType.PAYLOAD:
+            event: AggregateTradeEvent = event
+            tlist.append(TradeEvent(event))
+            tlist.subtotal()
+            if chek(tlist):
+                latch.count_down()
+            print(f's:{tlist.sell.totalAmount} b:{tlist.buy.totalAmount}')
+        else:
+            print("Unknown Data:")
+        print()
+
+    def error(e: 'BinanceApiException'):
+        print(e.error_code + e.error_message)
+
+    sub_client.subscribe_aggregate_trade_event(symbol.gen_with_usdt().lower(), callback, error)
+    latch.wait()
+    return tlist
