@@ -37,7 +37,7 @@ def run(client: RequestClient, payload: dict):
             pl.limit = pl.limit - 1
             return pl.limit <= 0
 
-        tlist = subscript(sub_client, pl.symbol)
+        tlist = subscript(sub_client, pl.symbol,check)
         return tlist.to_struct()
 
 
@@ -51,11 +51,12 @@ def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[Tr
             # latch.count_down()
         elif data_type == SubscribeMessageType.PAYLOAD:
             event: AggregateTradeEvent = event
+            print(event.__dict__)
             tlist.append(TradeEvent(event))
             tlist.subtotal()
             if chek(tlist):
                 latch.count_down()
-            print(f's:{tlist.sell.totalAmount} b:{tlist.buy.totalAmount}')
+
         else:
             print("Unknown Data:")
         print()

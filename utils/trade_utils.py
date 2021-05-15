@@ -85,25 +85,28 @@ class Bundle:
         self.trades: List[TradeInfo] = list()
 
     def subtotal(self):
-        amt = 0
-        sup = 0
-        for t in self.trades:
-            amt += t.qty()
-            sup += t.qty() * t.price()
-        self.totalAmount = amt
-        self.avgPrice = sup / self.totalAmount
-        hpe = self.clac_max('price')
-        self.highPrice = hpe.price()
-        self.highPriceAt = datetime.fromtimestamp(hpe.time() / 1000)
-        lpe = self.clac_min('price')
-        self.lowPrice = lpe.price()
-        self.lowPriceAt = datetime.fromtimestamp(lpe.time() / 1000)
-        hae = self.clac_max('qty')
-        self.highAmount = hae.qty()
-        self.highAmountAt = datetime.fromtimestamp(hae.time() / 1000)
-        le = self.clac_max('time')
-        self.lastPrice = le.price()
-        self.lastAt = datetime.fromtimestamp(le.time() / 1000)
+        try:
+            amt = 0
+            sup = 0
+            for t in self.trades:
+                amt += t.qty()
+                sup += t.qty() * t.price()
+            self.totalAmount = amt
+            self.avgPrice = sup / self.totalAmount
+            hpe = self.clac_max('price')
+            self.highPrice = hpe.price()
+            self.highPriceAt = datetime.fromtimestamp(hpe.time() / 1000)
+            lpe = self.clac_min('price')
+            self.lowPrice = lpe.price()
+            self.lowPriceAt = datetime.fromtimestamp(lpe.time() / 1000)
+            hae = self.clac_max('qty')
+            self.highAmount = hae.qty()
+            self.highAmountAt = datetime.fromtimestamp(hae.time() / 1000)
+            le = self.clac_max('time')
+            self.lastPrice = le.price()
+            self.lastAt = datetime.fromtimestamp(le.time() / 1000)
+        except Exception as e:  # work on python 3.x
+            print(e)
 
     def clac_max(self, f: str) -> TradeInfo:
         return max(self.trades, key=lambda x: getattr(x.get_data(), f))

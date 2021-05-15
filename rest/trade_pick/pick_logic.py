@@ -20,11 +20,29 @@ class PickLogic(metaclass=ABCMeta):
 
     def on_check(self, ts: TradeSet) -> bool:
         camt = self.get_amt(ts)
-        if camt
+        ccRate = self.calc_compared_rate(ts)
+        print(f'amt:{camt} ccr:{ccRate}')
+        if camt < self.dto.triggerAmt:
+            return False
+        if ccRate < self.dto.comparedRate:
+            return False
+        self.packResult(ts, camt)
+        return True
 
+    def packResult(self, ts: TradeSet, camt: float):
+        ans = CheckedResult(price=self.get_last_price(ts), moreRate=camt / self.dto.triggerAmt)
+        return ans
 
     @abstractmethod
     def get_amt(self, ts: TradeSet) -> float:
+        pass
+
+    @abstractmethod
+    def calc_compared_rate(self, ts: TradeSet) -> float:
+        pass
+
+    @abstractmethod
+    def get_last_price(self, ts: TradeSet) -> float:
         pass
 
 
@@ -33,8 +51,18 @@ class ToBuyLogic(PickLogic):
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
 
+    def calc_compared_rate(self, ts: TradeSet) -> float:
+        bamt = ts.buy.totalAmount
+        samt = ts.sell.totalAmount
+        if bamt <0 or samt<0 :
+            return 0
+        return bamt / samt
+
     def get_amt(self, ts: TradeSet) -> float:
         return ts.buy.totalAmount
+
+    def get_last_price(self, ts: TradeSet) -> float:
+        return ts.buy.lastPrice
 
 
 class ToSellLogic(PickLogic):
@@ -45,9 +73,12 @@ class ToSellLogic(PickLogic):
     def get_amt(self, ts: TradeSet) -> float:
         return ts.sell.totalAmount
 
+    def calc_compared_rate(self, ts: TradeSet) -> float:
+        bamt = ts.buy.totalAmount
+        samt = ts.sell.totalAmount
+        if bamt <0 or samt<0 :
+            return 0
+        return samt / bamt
 
-def gen_logic(dto: TrailPickDto) -> PickLogic:
-    return {
-        OrderSide.SELL: ToSellLogic(dto),
-        OrderSide.BUY: ToBuyLogic(dto)
-    }.get(dto.side)
+    def get_last_price(self, ts: TradeSet) -> float:
+        return ts.sell.lastPrice
