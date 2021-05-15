@@ -20,6 +20,7 @@ def run(client: RequestClient, payload: dict):
 
 
 def get_list(client: RequestClient, symbol: Symbol, startTime: str, endTime: str) -> TradeSet:
-    result = client.get_aggregate_trades_list(symbol=symbol.gen_with_usdt(), startTime=startTime, endTime=endTime)
+    result = client.get_aggregate_trades_list(symbol=symbol.gen_with_usdt(), startTime=startTime, endTime=endTime,
+                                              limit=999)
     ans = trade_utils.gen_subtotal_result(trade_utils.convert_traded_info(result))
     return ans

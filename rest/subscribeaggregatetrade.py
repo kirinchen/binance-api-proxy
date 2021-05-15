@@ -1,3 +1,4 @@
+import datetime
 import logging
 from typing import List, Callable
 
@@ -22,9 +23,9 @@ logger.addHandler(handler)
 
 class TrailTradeDto:
 
-    def __init__(self, symbol: str, limit: int):
+    def __init__(self, symbol: str, timeout: int):
         self.symbol: Symbol = Symbol.get(symbol)
-        self.limit: int = limit
+        self.timeout: int = timeout
 
 
 def run(client: RequestClient, payload: dict):
@@ -32,12 +33,14 @@ def run(client: RequestClient, payload: dict):
         sub_client: SubscriptionClient = sub_client
         PayloadReqKey.clean_default_keys(payload)
         pl = TrailTradeDto(**payload)
+        startAt = datetime.datetime.now().timestamp()
 
         def check(ts: TradeSet) -> bool:
-            pl.limit = pl.limit - 1
-            return pl.limit <= 0
+            cat = datetime.datetime.now().timestamp()
+            dt = cat - startAt
+            return pl.timeout <= dt
 
-        tlist = subscript(sub_client, pl.symbol,check)
+        tlist = subscript(sub_client, pl.symbol, check)
         return tlist.to_struct()
 
 

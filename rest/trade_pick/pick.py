@@ -12,12 +12,12 @@ def run(client: RequestClient, payload: dict):
     with gen_ws_client(payload) as sub_client:
         sub_client: SubscriptionClient = sub_client
         tpd = TrailPickDto(**payload)
-
+        seconds = 5*60
         time = datetime.now(tz=timezone.utc)
         st = time.isoformat()
-        etime = time + timedelta(seconds=10)
+        etime = time + timedelta(seconds=seconds)
         et = etime.isoformat()
-        tpd.timeout = 10
+        tpd.timeout = seconds
 
         tpicker = TrailPicker(subClient=sub_client, dto=tpd)
         ts = tpicker.trail()
