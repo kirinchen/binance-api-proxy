@@ -13,6 +13,7 @@ from market.Symbol import Symbol
 from rest.poxy_controller import gen_ws_client, PayloadReqKey
 from utils import trade_utils
 from utils.trade_utils import TradeSet, TradeEvent
+from threading import Timer
 
 logger = logging.getLogger("binance-client")
 logger.setLevel(level=logging.INFO)
@@ -44,7 +45,7 @@ def run(client: RequestClient, payload: dict):
         return tlist.to_struct()
 
 
-def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[TradeSet], bool]) -> TradeSet:
+def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[TradeSet], bool], delay=60) -> TradeSet:
     latch = CountDownLatch(1)
     tlist = TradeSet()
 
@@ -56,16 +57,25 @@ def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[Tr
             event: AggregateTradeEvent = event
             tlist.append(TradeEvent(event))
             tlist.subtotal()
-            if chek(tlist):
-                latch.count_down()
-
         else:
             print("Unknown Data:")
-        print()
+        if chek(tlist):
+            latch.count_down()
 
     def error(e: 'BinanceApiException'):
         print(e.error_code + e.error_message)
 
     sub_client.subscribe_aggregate_trade_event(symbol.gen_with_usdt().lower(), callback, error)
+
+    def delay_stop(delay):
+        print(f'foo() called after {delay}s delay')
+        latch.count_down()
+
+    print('Timer class demo')
+
+    # call foo() after 1 second
+    t = Timer(delay, delay_stop, [delay])
+    t.start()
+
     latch.wait()
     return tlist
