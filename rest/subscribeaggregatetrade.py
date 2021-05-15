@@ -54,7 +54,6 @@ def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[Tr
             # latch.count_down()
         elif data_type == SubscribeMessageType.PAYLOAD:
             event: AggregateTradeEvent = event
-            print(event.__dict__)
             tlist.append(TradeEvent(event))
             tlist.subtotal()
             if chek(tlist):
