@@ -18,7 +18,10 @@ def run(client: RequestClient, payload: dict):
     pf = PositionFilter(symbol=pl.symbol.symbol, positionSide=pl.positionSide)
     p = filter_position(result, pf)[0]
     ods: List[Order] = client.get_open_orders()
-    pc = ProfitCuter(pos=p, symbol=pl.symbol, orders=ods, payload=pl)
-    pc.cut(client)
+    try:
+        pc = ProfitCuter(pos=p, symbol=pl.symbol, orders=ods, payload=pl)
+        pc.cut(client)
+    except Exception as e:  # work on python 3.x
+        return 'Failed to  ' + str(e)
 
     return {}
