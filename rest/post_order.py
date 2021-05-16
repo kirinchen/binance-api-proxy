@@ -32,18 +32,23 @@ def fix_precision(p: int, fv: float):
 
 
 def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
+    rate = 1 + pl.currentMove if pl.selled else 1 - pl.currentMove
     if pl.quote is None:
         cqr = get_recent_trades_list.fetch(client, pl.symbol, 200)
         cq = cqr.sell.avgPrice if pl.selled else cqr.buy.avgPrice
-        rate = 1 + pl.currentMove if pl.selled else 1 - pl.currentMove
+
         return cq * rate
     else:
-        return pl.quote
+        return pl.quote * rate
 
 
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     pl = PostOrderDto(**payload)
+    post_order(client,pl)
+
+
+def post_order(client: RequestClient,pl:PostOrderDto):
     account: AccountInformation = client.get_account_information()
     leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount

@@ -13,7 +13,7 @@ def run(client: RequestClient, payload: dict):
         sub_client: SubscriptionClient = sub_client
         tpd = TrailPickDto(**payload)
 
-        tpicker = TrailPicker(subClient=sub_client, dto=tpd)
+        tpicker = TrailPicker(client=client, subClient=sub_client, dto=tpd)
         ts = tpicker.trail()
 
     return {}

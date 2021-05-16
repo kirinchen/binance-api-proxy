@@ -1,17 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
-from binance_f.model import OrderSide
+from rest.trade_pick.dtos import CheckedResult
 from rest.trade_pick.trail_picker import TrailPickDto
 from utils import rsi_utils
 from utils.rsi_utils import RSIResult
 from utils.trade_utils import TradeSet
-
-
-class CheckedResult:
-
-    def __init__(self, price: float, moreRate: float):
-        self.price: float = price
-        self.moreRate: float = moreRate
 
 
 class PickLogic(metaclass=ABCMeta):
@@ -22,21 +15,23 @@ class PickLogic(metaclass=ABCMeta):
 
     def on_check(self, ts: TradeSet) -> bool:
         camt = ts.all.totalAmount
-
+        print(f'amt:{camt}')
         if camt < self.dto.triggerAmt:
             return False
         if not self.calc_rsi(ts):
             return False
 
-        self.packResult(ts, camt)
-        return False
+        self.result = self.packResult(ts, camt)
+        return True
 
     def calc_rsi(self, ts: TradeSet) -> bool:
         try:
             rsir: RSIResult = rsi_utils.gen_rsi(ts.all.trades, self.dto.timeGrpRange * 1000)
+            print(f'groupNum:{rsir.groupNum}')
             if rsir.groupNum < self.dto.timeGrpSize:
                 return False
-            rsi = self.calc_rsi(rsir)
+            rsi = self.calc_rsi_result(rsir)
+            print(f'rsi:{rsi}')
             if rsi > 1 :
                 return False
             if rsi > self.dto.rsi:
@@ -50,7 +45,11 @@ class PickLogic(metaclass=ABCMeta):
         return ans
 
     @abstractmethod
-    def calc_rsi(self, r: RSIResult) -> float:
+    def is_selled(self) -> bool:
+        pass
+
+    @abstractmethod
+    def calc_rsi_result(self, r: RSIResult) -> float:
         pass
 
     @abstractmethod
@@ -60,13 +59,18 @@ class PickLogic(metaclass=ABCMeta):
 
 class ToBuyLogic(PickLogic):
 
+
+
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
+
+    def is_selled(self) -> bool:
+        return False
 
     def get_last_price(self, ts: TradeSet) -> float:
         return ts.buy.lastPrice
 
-    def calc_rsi(self, r: RSIResult) -> float:
+    def calc_rsi_result(self, r: RSIResult) -> float:
         return r.calc_rsi()
 
 
@@ -78,5 +82,8 @@ class ToSellLogic(PickLogic):
     def get_last_price(self, ts: TradeSet) -> float:
         return ts.sell.lastPrice
 
-    def calc_rsi(self, r: RSIResult) -> float:
+    def calc_rsi_result(self, r: RSIResult) -> float:
         return r.calc_rsi() * -1
+
+    def is_selled(self) -> bool:
+        return True
