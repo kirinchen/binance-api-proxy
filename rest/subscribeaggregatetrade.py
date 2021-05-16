@@ -64,6 +64,9 @@ def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[Tr
 
     def error(e: 'BinanceApiException'):
         print(e.error_code + e.error_message)
+        tlist.sell = None
+        tlist.buy = None
+        latch.count_down()
 
     sub_client.subscribe_aggregate_trade_event(symbol.gen_with_usdt().lower(), callback, error)
 
@@ -71,9 +74,6 @@ def subscript(sub_client: SubscriptionClient, symbol: Symbol, chek: Callable[[Tr
         print(f'foo() called after {delay}s delay')
         latch.count_down()
 
-    print('Timer class demo')
-
-    # call foo() after 1 second
     t = Timer(delay, delay_stop, [delay])
     t.start()
 

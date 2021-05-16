@@ -13,4 +13,4 @@ RUN pipenv install
 # RUN pip install /tmp/myapp
 EXPOSE 5000
 ENV FLASK_APP=main
-CMD ["pipenv","run","flask","run","--host=0.0.0.0"]
+CMD ["pipenv","run","flask","run","--host=0.0.0.0",">","/tmp/srv.log"]
