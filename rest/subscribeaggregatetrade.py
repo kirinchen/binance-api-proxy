@@ -41,7 +41,7 @@ def run(client: RequestClient, payload: dict):
             dt = cat - startAt
             return pl.timeout <= dt
 
-        tlist = subscript(sub_client, pl.symbol, check)
+        tlist = subscript(sub_client, pl.symbol, check, delay=pl.timeout)
         return tlist.to_struct()
 
 

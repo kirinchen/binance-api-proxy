@@ -70,7 +70,7 @@ class Tradeed(TradeInfo):
         return self.data.qty
 
 
-class Bundle:
+class TradeRange:
     def __init__(self):
         self.avgPrice = 0
         self.totalAmount = 0
@@ -131,18 +131,21 @@ class Bundle:
 
 class TradeSet:
     def __init__(self):
-        self.sell = Bundle()
-        self.buy = Bundle()
+        self.sell = TradeRange()
+        self.buy = TradeRange()
+        self.all = TradeRange()
 
     def subtotal(self):
         self.sell.subtotal()
         self.buy.subtotal()
+        self.all.subtotal()
 
     def append(self, t: TradeInfo):
         if t.isBuyerMaker():
             self.buy.trades.append(t)
         else:
             self.sell.trades.append(t)
+        self.all.trades.append(t)
 
     def to_struct(self) -> dict:
         return {
@@ -162,9 +165,6 @@ def convert_event_info(ts: List[AggregateTradeEvent]) -> List[TradeInfo]:
 def gen_subtotal_result(ts: List[TradeInfo]) -> TradeSet:
     ans = TradeSet()
     for t in ts:
-        if t.isBuyerMaker():
-            ans.buy.trades.append(t)
-        else:
-            ans.sell.trades.append(t)
+        ans.append(t)
     ans.subtotal()
     return ans

@@ -8,12 +8,15 @@ from utils.trade_utils import TradeSet
 
 
 class TrailPickDto:
-    def __init__(self, timeout: float, symbol: str, side: str, triggerAmt: float, comparedRate: float):
+    def __init__(self, timeout: float, symbol: str, side: str, triggerAmt: float, timeGrpRange: float,
+                 timeGrpSize: int, rsi:float):
         self.timeout = timeout  # senconds
         self.symbol: Symbol = Symbol.get(symbol)
         self.side = side
         self.triggerAmt = triggerAmt
-        self.comparedRate = comparedRate
+        self.timeGrpRange = timeGrpRange  # seconds 1
+        self.timeGrpSize = timeGrpSize
+        self.rsi = rsi
 
 
 class TrailPicker:
@@ -25,7 +28,7 @@ class TrailPicker:
         self.logic: pick_logic.PickLogic = trade_pick.gen_logic(self.dto)
 
     def trail(self) -> TradeSet:
-        ts = subscribeaggregatetrade.subscript(self.subClient, self.dto.symbol, self.on_chek)
+        ts = subscribeaggregatetrade.subscript(self.subClient, self.dto.symbol, self.on_chek, self.dto.timeout)
         print(ts)
         return ts
 

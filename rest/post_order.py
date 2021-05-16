@@ -11,7 +11,7 @@ from utils import comm_utils
 from utils.comm_utils import get_order_cid, gen_group_uid
 
 
-class Payload:
+class PostOrderDto:
 
     def __init__(self, tags: List[str], investedRate: float, guardRange: float, symbol: str, selled: bool,
                  quote: float = None,
@@ -31,7 +31,7 @@ def fix_precision(p: int, fv: float):
     return str(ans)
 
 
-def calc_quote(client: RequestClient, pl: Payload) -> float:
+def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
     if pl.quote is None:
         cqr = get_recent_trades_list.fetch(client, pl.symbol, 200)
         cq = cqr.sell.avgPrice if pl.selled else cqr.buy.avgPrice
@@ -43,7 +43,7 @@ def calc_quote(client: RequestClient, pl: Payload) -> float:
 
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
-    pl = Payload(**payload)
+    pl = PostOrderDto(**payload)
     account: AccountInformation = client.get_account_information()
     leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount

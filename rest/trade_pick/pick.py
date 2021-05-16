@@ -12,26 +12,11 @@ def run(client: RequestClient, payload: dict):
     with gen_ws_client(payload) as sub_client:
         sub_client: SubscriptionClient = sub_client
         tpd = TrailPickDto(**payload)
-        seconds = 5*60
-        time = datetime.now(tz=timezone.utc)
-        st = time.isoformat()
-        etime = time + timedelta(seconds=seconds)
-        et = etime.isoformat()
-        tpd.timeout = seconds
 
         tpicker = TrailPicker(subClient=sub_client, dto=tpd)
         ts = tpicker.trail()
 
-        rts = get_aggregate_trades_list.get_list(client, tpd.symbol, st, et)
-        print(st)
-        print(et)
-        printa(ts)
-        printa(rts)
-
-    return {
-        "ws": ts.to_struct(),
-        "rest": rts.to_struct()
-    }
+    return {}
 
 
 def printa(ts: TradeSet):
