@@ -11,17 +11,17 @@ class PickLogic(metaclass=ABCMeta):
 
     def __init__(self, dto: TrailPickDto):
         self.dto: TrailPickDto = dto
-        self.result: CheckedResult = None
+        self.result: CheckedResult = CheckedResult()
 
     def on_check(self, ts: TradeSet) -> bool:
         camt = ts.all.totalAmount
-        print(f'amt:{camt}')
+        self.result.amount = camt
         if camt < self.dto.triggerAmt:
             return False
         if not self.calc_rsi(ts):
             return False
 
-        self.result = self.packResult(ts, camt)
+        self.packResult(ts)
         return True
 
     def calc_rsi(self, ts: TradeSet) -> bool:
@@ -32,7 +32,9 @@ class PickLogic(metaclass=ABCMeta):
                 return False
             rsi = self.calc_rsi_result(rsir)
             print(f'rsi:{rsi}')
-            if rsi > 1 :
+            self.result.groupNum = rsir.groupNum
+            self.result.rsi = rsi
+            if rsi > 1:
                 return False
             if rsi > self.dto.rsi:
                 return True
@@ -40,9 +42,10 @@ class PickLogic(metaclass=ABCMeta):
             print(e)
             return False
 
-    def packResult(self, ts: TradeSet, camt: float):
-        ans = CheckedResult(price=self.get_last_price(ts), moreRate=camt / self.dto.triggerAmt)
-        return ans
+    def packResult(self, ts: TradeSet):
+        self.result.price = self.get_last_price(ts)
+        self.result.moreRate = self.result.amount / self.dto.triggerAmt
+        self.result.success = True
 
     @abstractmethod
     def is_selled(self) -> bool:
@@ -58,8 +61,6 @@ class PickLogic(metaclass=ABCMeta):
 
 
 class ToBuyLogic(PickLogic):
-
-
 
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)

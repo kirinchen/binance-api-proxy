@@ -36,6 +36,15 @@ def index():
     return f"Hello, World! BA"
 
 
+@app.route('/log')
+def log():
+    filepath = '/tmp/srv.log'
+    enc = 'utf-8'
+    with open(filepath, encoding=enc) as fp:
+        ctn = fp.read()
+        return ctn
+
+
 @app.route('/proxy', methods=['POST'])
 def proxy():
     payload = request.json
@@ -59,7 +68,6 @@ def gen_ws_client(payload: dict) -> SubscriptionClient:
     try:
         yield sub_client
     finally:
-        pass
         sub_client.unsubscribe_all()
 
 

@@ -1,3 +1,4 @@
+import logging
 import datetime
 from typing import List
 
@@ -39,17 +40,27 @@ class TrailPicker:
 
     def trail(self) -> TradeSet:
         ts = subscribeaggregatetrade.subscript(self.subClient, self.dto.symbol, self.on_chek, self.dto.timeout)
-        print(f'tr={ts}')
+
         rt = self.logic.result
-        if rt:
+        self.log_result(rt)
+        if rt.success:
             self.order(rt)
         return ts
+
+    def log_result(self, r: CheckedResult):
+        msg = f'''
+            amt {r.amount} / {self.dto.triggerAmt}
+            groupNum {r.groupNum} / {self.dto.timeGrpSize}
+            rsi {r.rsi} / {self.dto.rsi}
+            success {r.success} 
+        '''
+        logging.info(msg)
 
     def order(self, r: CheckedResult):
         odto = PostOrderDto(tags=self.dto.tags, investedRate=self.dto.investedRate, guardRange=self.dto.guardRange,
                             symbol=self.dto.symbol.symbol, selled=self.logic.is_selled(), quote=r.price,
                             currentMove=self.dto.currentMove)
-        print(odto.__dict__)
+        logging.info(odto.__dict__)
         post_order.post_order(client=self.client, pl=odto)
 
     def on_chek(self, ts: TradeSet) -> bool:
