@@ -58,4 +58,5 @@ class TrailPicker:
         if self.logic.on_check(ts):
             return True
         dt = cat - self.startAt
+        print(f'{dt} {self.dto.timeout}')
         return dt > self.dto.timeout

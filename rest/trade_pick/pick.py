@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timedelta, timezone
 
 from binance_f import RequestClient, SubscriptionClient
@@ -8,16 +9,19 @@ from utils.trade_utils import TradeSet
 
 
 def run(client: RequestClient, payload: dict):
-    PayloadReqKey.clean_default_keys(payload)
-    with gen_ws_client(payload) as sub_client:
-        sub_client: SubscriptionClient = sub_client
-        tpd = TrailPickDto(**payload)
+    def _job():
+        try:
+            PayloadReqKey.clean_default_keys(payload)
+            with gen_ws_client(payload) as sub_client:
+                sub_client: SubscriptionClient = sub_client
+                tpd = TrailPickDto(**payload)
 
-        tpicker = TrailPicker(client=client, subClient=sub_client, dto=tpd)
-        ts = tpicker.trail()
+                tpicker = TrailPicker(client=client, subClient=sub_client, dto=tpd)
+                ts = tpicker.trail()
+        except Exception as e:
+            print(e)
+
+    t = threading.Thread(target=_job)
+    t.start()
 
     return {}
-
-
-def printa(ts: TradeSet):
-    print(f'{ts.buy.totalAmount} {ts.sell.totalAmount}')
