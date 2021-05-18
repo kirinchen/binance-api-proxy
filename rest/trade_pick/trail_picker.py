@@ -54,13 +54,13 @@ class TrailPicker:
             rsi {r.rsi} / {self.dto.rsi}
             success {r.success} 
         '''
-        logging.info(msg)
+        logging.warning(msg)
 
     def order(self, r: CheckedResult):
         odto = PostOrderDto(tags=self.dto.tags, investedRate=self.dto.investedRate, guardRange=self.dto.guardRange,
                             symbol=self.dto.symbol.symbol, selled=self.logic.is_selled(), quote=r.price,
                             currentMove=self.dto.currentMove)
-        logging.info(odto.__dict__)
+        logging.warning(odto.__dict__)
         post_order.post_order(client=self.client, pl=odto)
 
     def on_chek(self, ts: TradeSet) -> bool:
