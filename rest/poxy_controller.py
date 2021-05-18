@@ -1,8 +1,9 @@
 import json
 import os
 from contextlib import contextmanager
+from datetime import datetime
 from enum import Enum
-from os import environ
+import logging
 
 from flask import Flask, Response
 from flask import request
@@ -38,11 +39,17 @@ def index():
 
 @app.route('/log')
 def log():
-    filepath = '/tmp/srv.log'
+    filepath = '/tmp/{:%Y-%m-%d}.log'.format(datetime.now())
     enc = 'utf-8'
     with open(filepath, encoding=enc) as fp:
         ctn = fp.read()
         return ctn
+
+
+@app.route('/log', methods=['DELETE'])
+def del_log():
+    filepath = '/tmp/srv.log'
+    filehandler_dbg = logging.FileHandler(filepath, mode='w')
 
 
 @app.route('/proxy', methods=['POST'])
