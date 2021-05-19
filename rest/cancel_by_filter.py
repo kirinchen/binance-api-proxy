@@ -24,13 +24,14 @@ def run(client: RequestClient, payload: dict):
         pl = OrderFilter(**payload)
 
         olist = get_open_orders.filter_order(client.get_open_orders(pl.get_symbole().gen_with_usdt()), pl)
+        if len(olist.orders) <= 0:
+            return
 
         ids = [e.orderId for e in olist.orders]
 
         result = client.cancel_list_orders(symbol=pl.get_symbole().gen_with_usdt(),
                                            orderIdList=ids)
         return comm_utils.to_struct_list(result)
-    except BinanceApiException as e: # work on python 3.x
-        print('Failed to upload to ftp: '+ str(e))
+    except BinanceApiException as e:  # work on python 3.x
+        print('Failed to upload to ftp: ' + str(e))
         return e.__dict__
-
