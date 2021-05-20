@@ -6,6 +6,7 @@ from binance_f.model import OrderSide, PositionSide, Order
 from infr.constant import MAKER_FEE, TAKER_FEE
 from rest import post_order, cancel_order
 from rest.profit.profit_cuter import ProfitCuter
+from rest.stop_loss import LossStoper
 
 from utils import order_utils
 
@@ -48,6 +49,8 @@ class CutLogic(metaclass=ABCMeta):
 
     def cut(self, client: RequestClient):
         if not self.is_rebuild_stop_orders():
+            ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00688)
+            ls.stop()
             return
         for sp in self.calc_step_prices():
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
