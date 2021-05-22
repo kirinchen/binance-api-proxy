@@ -40,7 +40,6 @@ class TrailPicker:
 
     def trail(self) -> TradeSet:
         ts = subscribeaggregatetrade.subscript(self.subClient, self.dto.symbol, self.on_chek, self.dto.timeout)
-
         rt = self.logic.result
         self.log_result(rt)
         if rt.success:

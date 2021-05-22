@@ -50,26 +50,31 @@ def gen_point(sbl: Symbol, side: str, field: str, val: float, time: datetime, ti
     )
 
 
-def gen_by_side(tr: TradeRange, side: str, sbl: Symbol,timeout:int) -> List[PointDto]:
-    ans:List[PointDto] = list()
-    ans.append(gen_point(sbl=sbl, side=side, field='totalAmount', val=tr.totalAmount, time=tr.lastAt,timeout=timeout))
-    ans.append(gen_point(sbl=sbl, side=side, field='avgPrice', val=tr.avgPrice, time=tr.lastAt,timeout=timeout))
-    ans.append(gen_point(sbl=sbl, side=side, field='lastPrice', val=tr.lastPrice, time=tr.lastAt,timeout=timeout))
-    ans.append(gen_point(sbl=sbl, side=side, field='highPrice', val=tr.highPrice, time=tr.highPriceAt,timeout=timeout))
-    ans.append(gen_point(sbl=sbl, side=side, field='lowPrice', val=tr.lowPrice, time=tr.lowPriceAt,timeout=timeout))
-    ans.append(gen_point(sbl=sbl, side=side, field='highAmount', val=tr.highAmount, time=tr.highAmountAt,timeout=timeout))
+def gen_by_side(tr: TradeRange, side: str, sbl: Symbol, timeout: int) -> List[PointDto]:
+    ans: List[PointDto] = list()
+    ans.append(gen_point(sbl=sbl, side=side, field='totalAmount', val=tr.totalAmount, time=tr.lastAt, timeout=timeout))
+    ans.append(gen_point(sbl=sbl, side=side, field='avgPrice', val=tr.avgPrice, time=tr.lastAt, timeout=timeout))
+    ans.append(gen_point(sbl=sbl, side=side, field='lastPrice', val=tr.lastPrice, time=tr.lastAt, timeout=timeout))
+    ans.append(gen_point(sbl=sbl, side=side, field='highPrice', val=tr.highPrice, time=tr.highPriceAt, timeout=timeout))
+    ans.append(gen_point(sbl=sbl, side=side, field='lowPrice', val=tr.lowPrice, time=tr.lowPriceAt, timeout=timeout))
+    ans.append(
+        gen_point(sbl=sbl, side=side, field='highAmount', val=tr.highAmount, time=tr.highAmountAt, timeout=timeout))
     return ans
 
 
-def collect_to_fin_srv(sub_client: SubscriptionClient, pl: TrailTradeDto):
+def collect_to_fin_srv(payload: dict):
     def _job():
         try:
-            ts = collect(sub_client, pl)
-            ps: List[PointDto] = list()
-            ps.extend(gen_by_side(ts.sell, 'sell', pl.symbol,pl.timeout))
-            ps.extend(gen_by_side(ts.buy, 'buy', pl.symbol,pl.timeout))
-            post_multiple(ps)
-            print('it ok send')
+            with gen_ws_client(payload) as sub_client:
+                sub_client: SubscriptionClient = sub_client
+                PayloadReqKey.clean_default_keys(payload)
+                pl = TrailTradeDto(**payload)
+                ts = collect(sub_client, pl)
+                ps: List[PointDto] = list()
+                ps.extend(gen_by_side(ts.sell, 'sell', pl.symbol, pl.timeout))
+                ps.extend(gen_by_side(ts.buy, 'buy', pl.symbol, pl.timeout))
+                post_multiple(ps)
+                print('it ok send')
         except Exception as e:
             logging.error(e)
 
@@ -79,14 +84,13 @@ def collect_to_fin_srv(sub_client: SubscriptionClient, pl: TrailTradeDto):
 
 
 def run(client: RequestClient, payload: dict):
+    if payload["asynced"] == True:
+        return collect_to_fin_srv(payload)
     with gen_ws_client(payload) as sub_client:
         sub_client: SubscriptionClient = sub_client
         PayloadReqKey.clean_default_keys(payload)
         pl = TrailTradeDto(**payload)
-        if pl.asynced:
-            return collect_to_fin_srv(sub_client, pl)
-        else:
-            return collect(sub_client, pl).to_struct()
+        return collect(sub_client, pl).to_struct()
 
 
 def collect(sub_client: SubscriptionClient, pl: TrailTradeDto) -> TradeSet:

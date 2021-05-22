@@ -8,6 +8,7 @@ import logging
 from flask import Flask, Response
 from flask import request
 
+import config
 from binance_f import RequestClient, SubscriptionClient
 
 import importlib.util
@@ -46,10 +47,11 @@ def log():
         return ctn
 
 
-@app.route('/log', methods=['DELETE'])
-def del_log():
-    filepath = '/tmp/srv.log'
-    filehandler_dbg = logging.FileHandler(filepath, mode='w')
+@app.route('/test')
+def test():
+    return {
+        "fin-measurement":config.env('fin-measurement')
+    }
 
 
 @app.route('/proxy', methods=['POST'])
