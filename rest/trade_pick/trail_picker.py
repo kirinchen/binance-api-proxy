@@ -2,7 +2,9 @@ import logging
 import datetime
 from typing import List
 
+import config
 from binance_f import SubscriptionClient, RequestClient
+from client.fin_proxy_client import PointDto, post_multiple
 from market.Symbol import Symbol
 from rest import subscribeaggregatetrade, trade_pick, post_order
 from rest.post_order import PostOrderDto
@@ -37,16 +39,46 @@ class TrailPicker:
         self.subClient: SubscriptionClient = subClient
         self.startAt = datetime.datetime.now().timestamp()
         self.logic: pick_logic.PickLogic = trade_pick.gen_logic(self.dto)
+        self.point_dtos: List[PointDto] = list()
 
     def trail(self) -> TradeSet:
+        self.log_start()
         ts = subscribeaggregatetrade.subscript(self.subClient, self.dto.symbol, self.on_chek, self.dto.timeout)
         rt = self.logic.result
-        self.log_result(rt)
+        odto: PostOrderDto = None
         if rt.success:
-            self.order(rt)
+            odto = self.order(rt)
+        self.log_result(rt, odto)
+        post_multiple(self.point_dtos)
         return ts
 
-    def log_result(self, r: CheckedResult):
+    def add_points(self, field: str, val: float, pickState: str, time: datetime, **kwargs):
+        tags = {
+            "symbol": self.dto.symbol.symbol,
+            "name": self.dto.symbol.title,
+            "category": 'cryptocurrency',
+            "source": 'binance',
+            "side": self.dto.side,
+            "pickState": pickState
+        }
+        tags.update(**kwargs)
+        p = PointDto(
+            measurement=config.env('fin-measurement'),
+            tags=tags,
+            field=field,
+            val=val,
+            time=time
+        )
+        self.point_dtos.append(p)
+
+    def log_start(self):
+        time = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.add_points(field='triggerAmt', val=self.dto.triggerAmt, pickState='start', time=time)
+        self.add_points(field='rsi', val=self.dto.rsi, pickState='start', time=time)
+        self.add_points(field='investedRate', val=self.dto.investedRate, pickState='start', time=time)
+        self.add_points(field='guardRange', val=self.dto.guardRange, pickState='start', time=time)
+
+    def log_result(self, r: CheckedResult, odto: PostOrderDto):
         msg = f'''
             amt {r.amount} / {self.dto.triggerAmt}
             groupNum {r.groupNum} / {self.dto.timeGrpSize}
@@ -54,13 +86,20 @@ class TrailPicker:
             success {r.success} 
         '''
         logging.warning(msg)
+        time = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.add_points(field='finalAmount', val=r.amount, pickState='result', time=time)
+        self.add_points(field='finalRsi', val=r.rsi, pickState='result', time=time)
+        if odto is None:
+            return
+        self.add_points(field='quote', val=odto.quote, pickState='result', time=time)
 
-    def order(self, r: CheckedResult):
+    def order(self, r: CheckedResult) -> PostOrderDto:
         odto = PostOrderDto(tags=self.dto.tags, investedRate=self.dto.investedRate, guardRange=self.dto.guardRange,
                             symbol=self.dto.symbol.symbol, selled=self.logic.is_selled(), quote=r.price,
                             currentMove=self.dto.currentMove)
         logging.warning(odto.__dict__)
         post_order.post_order(client=self.client, pl=odto)
+        return odto
 
     def on_chek(self, ts: TradeSet) -> bool:
         cat = datetime.datetime.now().timestamp()
