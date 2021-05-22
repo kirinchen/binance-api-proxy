@@ -3,21 +3,22 @@ from enum import Enum
 
 class Symbol(Enum):
 
-    def __init__(self, symbol: str, precision_price: int, precision_amount: int):
+    def __init__(self, symbol: str, title: str, precision_price: int, precision_amount: int):
         self.precision_price = precision_price
+        self.title = title
         self.precision_amount = precision_amount
         self.symbol = symbol
 
-    BTC = ('BTC', 2, 3)
-    BCH = ('BCH', 2, 3)
-    ETH = ('ETH', 2, 3)
-    ETC = ('ETC', 3, 2)
-    LTC = ('LTC', 2, 3)
-    XRP = ('XRP', 4, 1)
-    EOS = ('EOS', 3, 1)
-    BNB = ('BNB', 3, 2)
+    BTC = ('BTC', 'bitcoin', 2, 3)
+    BCH = ('BCH', 'Bitcoin Cash', 2, 3)
+    ETH = ('ETH', 'ethereum', 2, 3)
+    ETC = ('ETC', 'Ethereum Classic', 3, 2)
+    LTC = ('LTC', 'Litecoin', 2, 3)
+    XRP = ('XRP', 'XRP', 4, 1)
+    EOS = ('EOS', 'EOS', 3, 1)
+    BNB = ('BNB', 'Binance Coin', 3, 2)
 
-    def gen_with_usdt(self)->str:
+    def gen_with_usdt(self) -> str:
         return f'{self.symbol}USDT'
 
     @classmethod
@@ -39,5 +40,3 @@ class Symbol(Enum):
         if s == 'BTC':
             print(s)
         return Symbol.get(s)
-
-

@@ -1,5 +1,7 @@
+import os
 from datetime import datetime
 
+import config
 from rest.poxy_controller import get_flask_app
 import logging
 
@@ -15,6 +17,9 @@ logging.basicConfig(level=logging.WARNING,
                     handlers=[fh, ])
 logging.info('So should this')
 print('logger is setting')
+
+# fu = config.env('fin-proxy.url')
+# print(fu)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=9282, threaded=True)

@@ -17,6 +17,7 @@ websocket-client = "*"
 APScheduler = "*"
 flask = "*"
 pytest = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
