@@ -49,8 +49,13 @@ class TrailPicker:
         if rt.success:
             odto = self.order(rt)
         self.log_result(rt, odto)
+        self.add_success_tag(rt.success)
         post_multiple(self.point_dtos)
         return ts
+
+    def add_success_tag(self, s: bool):
+        for p in self.point_dtos:
+            p.tags['success'] = str(s)
 
     def add_points(self, field: str, val: float, pickState: str, time: datetime, **kwargs):
         tags = {
@@ -63,7 +68,7 @@ class TrailPicker:
         }
         tags.update(**kwargs)
         p = PointDto(
-            measurement=config.env('fin-measurement'),
+            measurement=config.env('order-measurement'),
             tags=tags,
             field=field,
             val=val,
