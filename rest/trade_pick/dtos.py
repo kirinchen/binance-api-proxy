@@ -6,4 +6,4 @@ class CheckedResult:
         self.success: bool = False
         self.amount: float = 0
         self.rsi: float = 0
-        self.groupNum : int = 0
+        self.groupNum: int = 0

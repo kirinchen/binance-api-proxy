@@ -108,6 +108,9 @@ class TradeRange:
         except Exception as e:  # work on python 3.x
             print(e)
 
+    def get_first(self) -> TradeInfo:
+        return self.clac_min('time')
+
     def clac_max(self, f: str) -> TradeInfo:
         return max(self.trades, key=lambda x: getattr(x.get_data(), f))
 

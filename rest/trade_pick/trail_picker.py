@@ -48,7 +48,7 @@ class TrailPicker:
         odto: PostOrderDto = None
         if rt.success:
             odto = self.order(rt)
-        self.log_result(rt, odto)
+        self.log_result(rt, odto,ts)
         self.add_success_tag(rt.success)
         post_multiple(self.point_dtos)
         return ts
@@ -83,7 +83,7 @@ class TrailPicker:
         self.add_points(field='investedRate', val=self.dto.investedRate, pickState='start', time=time)
         self.add_points(field='guardRange', val=self.dto.guardRange, pickState='start', time=time)
 
-    def log_result(self, r: CheckedResult, odto: PostOrderDto):
+    def log_result(self, r: CheckedResult, odto: PostOrderDto,ts:TradeSet):
         msg = f'''
             amt {r.amount} / {self.dto.triggerAmt}
             groupNum {r.groupNum} / {self.dto.timeGrpSize}
@@ -94,6 +94,7 @@ class TrailPicker:
         time = datetime.datetime.now(tz=datetime.timezone.utc)
         self.add_points(field='finalAmount', val=r.amount, pickState='result', time=time)
         self.add_points(field='finalRsi', val=r.rsi, pickState='result', time=time)
+        self.add_points(field='startPrice', val=ts.all.get_first().price(), pickState='result', time=time)
         if odto is None:
             return
         self.add_points(field='quote', val=odto.quote, pickState='result', time=time)

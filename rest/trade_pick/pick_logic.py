@@ -36,8 +36,10 @@ class PickLogic(metaclass=ABCMeta):
             self.result.rsi = rsi
             if rsi > 1:
                 return False
-            if rsi > self.dto.rsi:
-                return True
+            if not self.is_peak_point(ts):
+                return False
+            return rsi > self.dto.rsi
+
         except Exception as e:  # work on python 3.x
             print(e)
             return False
@@ -46,6 +48,10 @@ class PickLogic(metaclass=ABCMeta):
         self.result.price = self.get_last_price(ts)
         self.result.moreRate = self.result.amount / self.dto.triggerAmt
         self.result.success = True
+
+    @abstractmethod
+    def is_peak_point(self, ts: TradeSet) -> bool:
+        pass
 
     @abstractmethod
     def is_selled(self) -> bool:
@@ -65,6 +71,11 @@ class ToBuyLogic(PickLogic):
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
 
+    def is_peak_point(self, ts: TradeSet) -> bool:
+        start_p = ts.all.get_first().price() * 1.003
+        end_p = ts.all.lastPrice
+        return start_p > end_p
+
     def is_selled(self) -> bool:
         return False
 
@@ -79,6 +90,11 @@ class ToSellLogic(PickLogic):
 
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
+
+    def is_peak_point(self, ts: TradeSet) -> bool:
+        start_p = ts.all.get_first().price()
+        end_p = ts.all.lastPrice * 1.003
+        return start_p < end_p
 
     def get_last_price(self, ts: TradeSet) -> float:
         return ts.sell.lastPrice
