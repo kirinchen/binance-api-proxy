@@ -18,7 +18,7 @@ class CutLogic(metaclass=ABCMeta):
         self.markPrice = self.cutOrder.position.markPrice
         self.entryPrice = self.cutOrder.position.entryPrice
         self.profitRate = self.calc_profit_rate()
-        self.stepQuantity: float = (self.cutOrder.position.positionAmt * 1.00086) / self.cutOrder.payload.cutCount
+        self.stepQuantity: float = (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
 
     def setup_current_orders(self):
         self.currentOds: List[Order] = self.cutOrder.stopOrders
@@ -49,8 +49,7 @@ class CutLogic(metaclass=ABCMeta):
 
     def cut(self, client: RequestClient):
         if not self.is_rebuild_stop_orders():
-            ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00688)
-            ls.stop()
+            self._stop_loss(client)
             return
         for sp in self.calc_step_prices():
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
@@ -61,6 +60,7 @@ class CutLogic(metaclass=ABCMeta):
 
         result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
                                            orderIdList=[od.orderId for od in self.currentOds])
+        self._stop_loss(client)
 
     def clean_over_order(self, client: RequestClient):
         self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
@@ -70,6 +70,12 @@ class CutLogic(metaclass=ABCMeta):
                 cancel_order.cancel_order(client, self.cutOrder.symbol, ods.orderId)
                 continue
             sumQ += ods.origQty
+        if sumQ < self.cutOrder.position.positionAmt:
+            self._stop_loss()
+
+    def _stop_loss(self, client: RequestClient):
+        ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00688)
+        ls.stop()
 
     @abstractmethod
     def check_over_soon_order(self):
@@ -120,12 +126,16 @@ class LongCutLogic(CutLogic):
         return OrderSide.SELL
 
     def calc_step_prices(self) -> List[float]:
+        dto = self.cutOrder.payload
         ans: List[float] = list()
-        dp = (self.markPrice - self.entryPrice) * self.cutOrder.payload.topRate
+        bottomPrice = self.entryPrice * (1 + dto.bottomRate)
+        dp = (self.markPrice - bottomPrice) * dto.topRate
         dsp = dp / self.cutOrder.payload.cutCount
         for i in range(self.cutOrder.payload.cutCount):
-            p = (dsp * (i + 1)) + self.entryPrice
-            ans.append(p)
+            pp = (dsp * (i + 1))
+            ppr = pp / bottomPrice
+            if ppr >= dto.minStepRate:
+                ans.append(pp + bottomPrice)
         ans.reverse()
         return ans
 
@@ -147,14 +157,21 @@ class ShortCutLogic(CutLogic):
         return self.entryPrice - self.markPrice
 
     def calc_step_prices(self) -> List[float]:
+        dto = self.cutOrder.payload
         ans: List[float] = list()
-        dp = (self.entryPrice - self.markPrice) * self.cutOrder.payload.topRate
+        bottomPrice = self.entryPrice * (1 + dto.bottomRate)
+        dp = (self.entryPrice - bottomPrice) * self.cutOrder.payload.topRate
         dsp = dp / self.cutOrder.payload.cutCount
         for i in range(self.cutOrder.payload.cutCount):
-            p = (dsp * (i + 1)) + self.markPrice
-            ans.append(p)
+            pp = (dsp * (i + 1))
+            ppr = pp / bottomPrice
+            if ppr >= dto.minStepRate:
+                ans.append(pp + bottomPrice)
         ans.reverse()
         return ans
+
+
+
 
     def get_stop_side(self) -> str:
         return OrderSide.BUY

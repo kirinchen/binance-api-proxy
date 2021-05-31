@@ -47,7 +47,7 @@ class LossStoper:
             return
         q = self.diffAmt / 3
         for i in range(3):
-            post_order.post_stop_order(client=self.client, symbol=self.position.symbol,
+            post_order.post_stop_order(client=self.client, symbol=Symbol.get_with_usdt( self.position.symbol),
                                        stop_side=self.get_stop_side(),
                                        stopPrice=self.stopPrice,
                                        tags=['stop'],
