@@ -174,13 +174,13 @@ class ShortCutLogic(CutLogic):
         dto = self.cutOrder.payload
         ans: List[float] = list()
         bottomPrice = self.entryPrice * (1 + dto.bottomRate)
-        dp = (self.entryPrice - bottomPrice) * self.cutOrder.payload.topRate
+        dp = (bottomPrice - self.markPrice) * self.cutOrder.payload.topRate
         dsp = dp / self.cutOrder.payload.cutCount
         for i in range(self.cutOrder.payload.cutCount):
             pp = (dsp * (i + 1))
             ppr = pp / bottomPrice
             if ppr >= dto.minStepRate:
-                ans.append(pp + bottomPrice)
+                ans.append( bottomPrice - pp)
         ans.reverse()
         return ans
 
