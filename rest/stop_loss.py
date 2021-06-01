@@ -28,7 +28,7 @@ class LossStoper:
             return
         ods: List[Order] = self.client.get_open_orders(self.position.symbol)
         self.stopOrders: List[Order] = filter_order(ods, OrderFilter(
-            symbol=self.position.symbol,
+            symbol=Symbol.get_with_usdt( self.position.symbol).symbol,
             side=self.get_stop_side(),
             orderType=OrderType.STOP_MARKET
         )).orders

@@ -18,7 +18,7 @@ class CutLogic(metaclass=ABCMeta):
         self.markPrice = self.cutOrder.position.markPrice
         self.entryPrice = self.cutOrder.position.entryPrice
         self.profitRate = self.calc_profit_rate()
-        self.stepQuantity: float = (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
+        self.stepQuantity: float = self.calc_step_quantity()
 
     def setup_current_orders(self):
         self.currentOds: List[Order] = self.cutOrder.stopOrders
@@ -105,6 +105,10 @@ class CutLogic(metaclass=ABCMeta):
     def calc_step_prices(self, cutCount: int, topRate: float) -> List[float]:
         pass
 
+    @abstractmethod
+    def calc_step_quantity(self) -> float:
+        pass
+
 
 class LongCutLogic(CutLogic):
 
@@ -139,6 +143,9 @@ class LongCutLogic(CutLogic):
         ans.reverse()
         return ans
 
+    def calc_step_quantity(self) -> float:
+        return (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
+
 
 class ShortCutLogic(CutLogic):
 
@@ -170,8 +177,8 @@ class ShortCutLogic(CutLogic):
         ans.reverse()
         return ans
 
-
-
-
     def get_stop_side(self) -> str:
         return OrderSide.BUY
+
+    def calc_step_quantity(self) -> float:
+        return -1 * (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
