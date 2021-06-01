@@ -20,7 +20,8 @@ class LossStoper:
         self.stopOrders = stopOrders
         self.setup_stop_orders()
         self.stopAmt = order_utils.sum_amt(self.stopOrders)
-        self.diffAmt = self.position.positionAmt - self.stopAmt
+        amt = self.position.positionAmt if self.position.positionSide == PositionSide.LONG else -self.position.positionAmt
+        self.diffAmt = amt - self.stopAmt
         self.stopPrice = self.calc_stop_price()
 
     def setup_stop_orders(self):

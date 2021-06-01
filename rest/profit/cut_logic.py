@@ -25,10 +25,10 @@ class CutLogic(metaclass=ABCMeta):
         self.sort_soon_orders()
 
     def get_maker_fee(self):
-        return self.cutOrder.position.positionAmt * self.entryPrice * MAKER_FEE
+        return self.get_pos_amt() * self.entryPrice * MAKER_FEE
 
     def get_taker_fee(self):
-        return self.cutOrder.position.positionAmt * self.markPrice * TAKER_FEE
+        return self.get_pos_amt() * self.markPrice * TAKER_FEE
 
     def calc_current_soon_stop_price(self):
         return self.currentOds[0].stopPrice
@@ -40,7 +40,7 @@ class CutLogic(metaclass=ABCMeta):
         if len(self.currentOds) <= 0:
             return True
         current_stop_sum_amt = order_utils.sum_amt(self.cutOrder.stopOrders)
-        if current_stop_sum_amt < self.cutOrder.position.positionAmt:
+        if current_stop_sum_amt < self.get_pos_amt():
             return True
         if self.check_over_soon_order():
             return True
@@ -57,20 +57,20 @@ class CutLogic(metaclass=ABCMeta):
                                               stopPrice=sp,
                                               tags=['stop'],
                                               quantity=self.stepQuantity)
-
-        result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
-                                           orderIdList=[od.orderId for od in self.currentOds])
+        if self.currentOds and len(self.currentOds) > 0:
+            result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
+                                               orderIdList=[od.orderId for od in self.currentOds])
         self._stop_loss(client)
 
     def clean_over_order(self, client: RequestClient):
         self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
         sumQ = 0.0
         for ods in self.cutOrder.stopOrders:
-            if sumQ >= self.cutOrder.position.positionAmt:
+            if sumQ >= self.get_pos_amt():
                 cancel_order.cancel_order(client, self.cutOrder.symbol, ods.orderId)
                 continue
             sumQ += ods.origQty
-        if sumQ < self.cutOrder.position.positionAmt:
+        if sumQ < self.get_pos_amt():
             self._stop_loss()
 
     def _stop_loss(self, client: RequestClient):
@@ -92,9 +92,9 @@ class CutLogic(metaclass=ABCMeta):
     def calc_profit_rate(self) -> float:
         spread = self.get_spread()
         fee = self.get_maker_fee() + self.get_taker_fee()
-        pprofit = spread * self.cutOrder.position.positionAmt
+        pprofit = spread * self.get_pos_amt()
         profit = pprofit - fee
-        cost = (self.cutOrder.position.positionAmt * self.entryPrice) / self.cutOrder.position.leverage
+        cost = (self.get_pos_amt() * self.entryPrice) / self.cutOrder.position.leverage
         return profit / cost
 
     @abstractmethod
@@ -107,6 +107,10 @@ class CutLogic(metaclass=ABCMeta):
 
     @abstractmethod
     def calc_step_quantity(self) -> float:
+        pass
+
+    @abstractmethod
+    def get_pos_amt(self) -> float:
         pass
 
 
@@ -143,8 +147,11 @@ class LongCutLogic(CutLogic):
         ans.reverse()
         return ans
 
+    def get_pos_amt(self) -> float:
+        return self.cutOrder.position.positionAmt
+
     def calc_step_quantity(self) -> float:
-        return (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
+        return self.get_pos_amt() * 1.001168 / self.cutOrder.payload.cutCount
 
 
 class ShortCutLogic(CutLogic):
@@ -181,4 +188,7 @@ class ShortCutLogic(CutLogic):
         return OrderSide.BUY
 
     def calc_step_quantity(self) -> float:
-        return -1 * (self.cutOrder.position.positionAmt * 1.00168) / self.cutOrder.payload.cutCount
+        return self.get_pos_amt() * 1.001168 / self.cutOrder.payload.cutCount
+
+    def get_pos_amt(self) -> float:
+        return -1 * (self.cutOrder.position.positionAmt)
