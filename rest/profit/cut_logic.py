@@ -51,27 +51,22 @@ class CutLogic(metaclass=ABCMeta):
         if not self.is_rebuild_stop_orders():
             self._stop_loss(client)
             return
+        self.clean_old_order(client)
         for sp in self.calc_step_prices():
             nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
                                               stop_side=self.get_stop_side(),
                                               stopPrice=sp,
                                               tags=['stop'],
                                               quantity=self.stepQuantity)
-        if self.currentOds and len(self.currentOds) > 0:
-            result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
-                                               orderIdList=[od.orderId for od in self.currentOds])
         self._stop_loss(client)
 
-    def clean_over_order(self, client: RequestClient):
-        self.cutOrder.stopOrders.sort(key=lambda s: s.stopPrice, reverse=True)
-        sumQ = 0.0
-        for ods in self.cutOrder.stopOrders:
-            if sumQ >= self.get_pos_amt():
-                cancel_order.cancel_order(client, self.cutOrder.symbol, ods.orderId)
-                continue
-            sumQ += ods.origQty
-        if sumQ < self.get_pos_amt():
-            self._stop_loss()
+    def clean_old_order(self, client: RequestClient):
+        try:
+            if self.currentOds and len(self.currentOds) > 0:
+                result = client.cancel_list_orders(symbol=self.cutOrder.symbol.gen_with_usdt(),
+                                                   orderIdList=[od.orderId for od in self.currentOds])
+        except Exception as e:  # work on python 3.x
+            print('Failed to upload to ftp: ' + str(e))
 
     def _stop_loss(self, client: RequestClient):
         ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00688)
