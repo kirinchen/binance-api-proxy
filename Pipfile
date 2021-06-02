@@ -18,6 +18,7 @@ APScheduler = "*"
 flask = "*"
 pytest = "*"
 python-dotenv = "*"
+python-dateutil = "*"
 
 [dev-packages]
 

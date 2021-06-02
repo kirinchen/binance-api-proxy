@@ -72,9 +72,9 @@ class ToBuyLogic(PickLogic):
         super().__init__(dto)
 
     def is_peak_point(self, ts: TradeSet) -> bool:
-        start_p = ts.all.get_first().price() * 1.003
-        end_p = ts.all.lastPrice
-        return start_p > end_p
+        th_p = self.dto.threshold
+        end_p = ts.buy.lastPrice
+        return th_p > end_p
 
     def is_selled(self) -> bool:
         return False
@@ -92,9 +92,9 @@ class ToSellLogic(PickLogic):
         super().__init__(dto)
 
     def is_peak_point(self, ts: TradeSet) -> bool:
-        start_p = ts.all.get_first().price()
-        end_p = ts.all.lastPrice * 1.003
-        return start_p < end_p
+        th_p = self.dto.threshold
+        end_p = ts.sell.lastPrice * 1.003
+        return th_p < end_p
 
     def get_last_price(self, ts: TradeSet) -> float:
         return ts.sell.lastPrice

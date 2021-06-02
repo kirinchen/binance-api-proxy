@@ -16,8 +16,7 @@ from utils.trade_utils import TradeSet
 class TrailPickDto:
     def __init__(self, timeout: float, symbol: str, side: str, triggerAmt: float, timeGrpRange: float,
                  timeGrpSize: int, rsi: float, investedRate: float, guardRange: float, tags: List[str],
-                 currentMove: float = None
-                 ):
+                 threshold: float, currentMove: float = None):
         self.timeout = timeout  # senconds
         self.symbol: Symbol = Symbol.get(symbol)
         self.side = side
@@ -29,6 +28,7 @@ class TrailPickDto:
         self.guardRange = guardRange
         self.currentMove = currentMove
         self.tags: List[str] = tags
+        self.threshold: float = threshold
 
 
 class TrailPicker:
@@ -48,7 +48,7 @@ class TrailPicker:
         odto: PostOrderDto = None
         if rt.success:
             odto = self.order(rt)
-        self.log_result(rt, odto,ts)
+        self.log_result(rt, odto, ts)
         self.add_success_tag(rt.success)
         post_multiple(self.point_dtos)
         return ts
@@ -83,7 +83,7 @@ class TrailPicker:
         self.add_points(field='investedRate', val=self.dto.investedRate, pickState='start', time=time)
         self.add_points(field='guardRange', val=self.dto.guardRange, pickState='start', time=time)
 
-    def log_result(self, r: CheckedResult, odto: PostOrderDto,ts:TradeSet):
+    def log_result(self, r: CheckedResult, odto: PostOrderDto, ts: TradeSet):
         msg = f'''
             amt {r.amount} / {self.dto.triggerAmt}
             groupNum {r.groupNum} / {self.dto.timeGrpSize}
