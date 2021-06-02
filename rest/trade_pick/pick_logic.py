@@ -36,7 +36,7 @@ class PickLogic(metaclass=ABCMeta):
             self.result.rsi = rsi
             if rsi > 1:
                 return False
-            if not self.is_peak_point(ts):
+            if not self.is_threshold(ts):
                 return False
             return rsi > self.dto.rsi
 
@@ -50,7 +50,7 @@ class PickLogic(metaclass=ABCMeta):
         self.result.success = True
 
     @abstractmethod
-    def is_peak_point(self, ts: TradeSet) -> bool:
+    def is_threshold(self, ts: TradeSet) -> bool:
         pass
 
     @abstractmethod
@@ -71,7 +71,7 @@ class ToBuyLogic(PickLogic):
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
 
-    def is_peak_point(self, ts: TradeSet) -> bool:
+    def is_threshold(self, ts: TradeSet) -> bool:
         th_p = self.dto.threshold
         end_p = ts.buy.lastPrice
         return th_p > end_p
@@ -91,7 +91,7 @@ class ToSellLogic(PickLogic):
     def __init__(self, dto: TrailPickDto):
         super().__init__(dto)
 
-    def is_peak_point(self, ts: TradeSet) -> bool:
+    def is_threshold(self, ts: TradeSet) -> bool:
         th_p = self.dto.threshold
         end_p = ts.sell.lastPrice * 1.003
         return th_p < end_p
