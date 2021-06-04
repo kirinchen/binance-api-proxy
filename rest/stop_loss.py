@@ -29,7 +29,7 @@ class LossStoper:
             return
         ods: List[Order] = self.client.get_open_orders(self.position.symbol)
         self.stopOrders: List[Order] = filter_order(ods, OrderFilter(
-            symbol=Symbol.get_with_usdt( self.position.symbol).symbol,
+            symbol=Symbol.get_with_usdt(self.position.symbol).symbol,
             side=self.get_stop_side(),
             orderType=OrderType.STOP_MARKET
         )).orders
@@ -46,18 +46,17 @@ class LossStoper:
     def stop(self):
         if self.diffAmt <= 0:
             return
-        q = self.diffAmt / 2
-        for i in range(2):
-            post_order.post_stop_order(client=self.client, symbol=Symbol.get_with_usdt( self.position.symbol),
-                                       stop_side=self.get_stop_side(),
-                                       stopPrice=self.stopPrice,
-                                       tags=['stop'],
-                                       quantity=q)
+
+        post_order.post_stop_order(client=self.client, symbol=Symbol.get_with_usdt(self.position.symbol),
+                                   stop_side=self.get_stop_side(),
+                                   stopPrice=self.stopPrice,
+                                   tags=['stop'],
+                                   quantity=self.diffAmt)
 
 
 class PayLoad:
 
-    def __init__(self, symbol: str, positionSide: str, stopRate:float):
+    def __init__(self, symbol: str, positionSide: str, stopRate: float):
         self.symbol: Symbol = Symbol.get(symbol)
         self.positionSide = positionSide
         self.stopRate = stopRate
@@ -69,6 +68,6 @@ def run(client: RequestClient, payload: dict):
     result: List[Position] = client.get_position()
     pf = PositionFilter(symbol=pl.symbol.symbol, positionSide=pl.positionSide)
     p = filter_position(result, pf)[0]
-    ls = LossStoper(client=client,position=p,stopRate=pl.stopRate)
+    ls = LossStoper(client=client, position=p, stopRate=pl.stopRate)
     ls.stop()
     return {}

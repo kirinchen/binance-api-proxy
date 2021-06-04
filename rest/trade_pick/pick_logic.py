@@ -72,6 +72,8 @@ class ToBuyLogic(PickLogic):
         super().__init__(dto)
 
     def is_threshold(self, ts: TradeSet) -> bool:
+        if self.dto.threshold is None:
+            return True
         th_p = self.dto.threshold
         end_p = ts.buy.lastPrice
         return th_p > end_p
@@ -92,6 +94,8 @@ class ToSellLogic(PickLogic):
         super().__init__(dto)
 
     def is_threshold(self, ts: TradeSet) -> bool:
+        if self.dto.threshold is None:
+            return True
         th_p = self.dto.threshold
         end_p = ts.sell.lastPrice * 1.003
         return th_p < end_p

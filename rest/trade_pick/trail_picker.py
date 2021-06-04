@@ -16,7 +16,7 @@ from utils.trade_utils import TradeSet
 class TrailPickDto:
     def __init__(self, timeout: float, symbol: str, side: str, triggerAmt: float, timeGrpRange: float,
                  timeGrpSize: int, rsi: float, investedRate: float, guardRange: float, tags: List[str],
-                 threshold: float, currentMove: float = None):
+                 threshold: float = None, currentMove: float = None):
         self.timeout = timeout  # senconds
         self.symbol: Symbol = Symbol.get(symbol)
         self.side = side
