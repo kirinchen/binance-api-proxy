@@ -8,7 +8,7 @@ from rest import post_order, cancel_order
 from rest.profit.profit_cuter import ProfitCuter
 from rest.stop_loss import LossStoper
 
-from utils import order_utils
+from utils import order_utils, position_utils
 
 
 class CutLogic(metaclass=ABCMeta):
@@ -104,9 +104,7 @@ class CutLogic(metaclass=ABCMeta):
     def calc_step_quantity(self) -> float:
         pass
 
-    @abstractmethod
-    def get_pos_amt(self) -> float:
-        pass
+
 
 
 class LongCutLogic(CutLogic):
@@ -142,11 +140,8 @@ class LongCutLogic(CutLogic):
         ans.reverse()
         return ans
 
-    def get_pos_amt(self) -> float:
-        return self.cutOrder.position.positionAmt
-
     def calc_step_quantity(self) -> float:
-        return self.get_pos_amt() * 1.001168 / self.cutOrder.payload.cutCount
+        return position_utils.get_abs_amt(self.cutOrder.position) * 1.001168 / self.cutOrder.payload.cutCount
 
 
 class ShortCutLogic(CutLogic):
@@ -183,7 +178,6 @@ class ShortCutLogic(CutLogic):
         return OrderSide.BUY
 
     def calc_step_quantity(self) -> float:
-        return self.get_pos_amt() * 1.001168 / self.cutOrder.payload.cutCount
+        return position_utils.get_abs_amt(self.cutOrder.position) * 1.001168 / self.cutOrder.payload.cutCount
 
-    def get_pos_amt(self) -> float:
-        return -1 * (self.cutOrder.position.positionAmt)
+

@@ -24,3 +24,7 @@ def filter_position(ps: List[Position], ft: PositionFilter) -> List[Position]:
             continue
         ans.append(p)
     return ans
+
+
+def get_abs_amt(p: Position) -> float:
+    return abs(p.positionAmt)

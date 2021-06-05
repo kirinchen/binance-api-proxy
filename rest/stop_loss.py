@@ -6,7 +6,7 @@ from binance_f.model import Position, PositionSide, OrderSide, Order, OrderType
 from market.Symbol import Symbol
 from rest import post_order
 from rest.poxy_controller import PayloadReqKey
-from utils import order_utils
+from utils import order_utils, position_utils
 from utils.order_utils import OrderFilter, filter_order
 from utils.position_utils import PositionFilter, filter_position
 
@@ -20,7 +20,7 @@ class LossStoper:
         self.stopOrders = stopOrders
         self.setup_stop_orders()
         self.stopAmt = order_utils.sum_amt(self.stopOrders)
-        amt = self.position.positionAmt if self.position.positionSide == PositionSide.LONG else -self.position.positionAmt
+        amt = position_utils.get_abs_amt(self.position)
         self.diffAmt = amt - self.stopAmt
         self.stopPrice = self.calc_stop_price()
 
