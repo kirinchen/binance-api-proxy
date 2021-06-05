@@ -47,6 +47,9 @@ class CutLogic(metaclass=ABCMeta):
 
         return False
 
+    def get_pos_amt(self):
+        return position_utils.get_abs_amt(self.cutOrder.position)
+
     def cut(self, client: RequestClient):
         if not self.is_rebuild_stop_orders():
             self._stop_loss(client)
