@@ -4,10 +4,10 @@ from enum import Enum
 class Symbol(Enum):
 
     def __init__(self, symbol: str, title: str, precision_price: int, precision_amount: int):
-        self.precision_price = precision_price
-        self.title = title
-        self.precision_amount = precision_amount
         self.symbol = symbol
+        self.title = title
+        self.precision_price = precision_price
+        self.precision_amount = precision_amount
 
     BTC = ('BTC', 'bitcoin', 2, 3)
     BCH = ('BCH', 'Bitcoin Cash', 2, 3)
@@ -20,6 +20,9 @@ class Symbol(Enum):
 
     def gen_with_usdt(self) -> str:
         return f'{self.symbol}USDT'
+
+    def get_min_amount(self):
+        return 1 / pow(10, self.precision_amount)
 
     @classmethod
     def values(cls):
@@ -40,3 +43,5 @@ class Symbol(Enum):
         if s == 'BTC':
             print(s)
         return Symbol.get(s)
+
+

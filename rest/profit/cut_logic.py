@@ -56,13 +56,23 @@ class CutLogic(metaclass=ABCMeta):
             self._stop_loss(client)
             return
         self.clean_old_order(client)
-        for sp in self.calc_step_prices():
-            nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
-                                              stop_side=self.get_stop_side(),
-                                              stopPrice=sp,
-                                              tags=['stop'],
-                                              quantity=self.stepQuantity)
+        self.post_stop_order_all(client)
+
         self._stop_loss(client)
+
+    def post_stop_order_all(self, client: RequestClient):
+        if self.stepQuantity <= self.cutOrder.symbol.get_min_amount():
+            self.post_stop_order(client, self.calc_step_prices()[0], self.get_pos_amt())
+            return 
+        for sp in self.calc_step_prices():
+            self.post_stop_order(client, sp, self.stepQuantity)
+
+    def post_stop_order(self, client: RequestClient, sp: float, q: float):
+        nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
+                                          stop_side=self.get_stop_side(),
+                                          stopPrice=sp,
+                                          tags=['stop'],
+                                          quantity=q)
 
     def clean_old_order(self, client: RequestClient):
         try:
@@ -74,7 +84,7 @@ class CutLogic(metaclass=ABCMeta):
 
     def _stop_loss(self, client: RequestClient):
         ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00268)
-        pos_info  = json.dumps(self.cutOrder.position.__dict__)
+        pos_info = json.dumps(self.cutOrder.position.__dict__)
         dto_info = json.dumps(self.cutOrder.payload.to_dict())
         current_stop_sum_amt = order_utils.sum_amt(self.cutOrder.stopOrders)
         logging.warning(f'''
@@ -115,8 +125,6 @@ class CutLogic(metaclass=ABCMeta):
     @abstractmethod
     def calc_step_quantity(self) -> float:
         pass
-
-
 
 
 class LongCutLogic(CutLogic):
@@ -182,7 +190,7 @@ class ShortCutLogic(CutLogic):
             pp = (dsp * (i + 1))
             ppr = pp / bottomPrice
             if ppr >= dto.minStepRate:
-                ans.append( bottomPrice - pp)
+                ans.append(bottomPrice - pp)
         ans.reverse()
         return ans
 
@@ -191,5 +199,3 @@ class ShortCutLogic(CutLogic):
 
     def calc_step_quantity(self) -> float:
         return position_utils.get_abs_amt(self.cutOrder.position) * 1.001168 / self.cutOrder.payload.cutCount
-
-
