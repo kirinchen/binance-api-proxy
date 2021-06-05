@@ -1,6 +1,7 @@
+import json
 from abc import ABCMeta, abstractmethod
 from typing import List
-
+import logging
 from binance_f import RequestClient
 from binance_f.model import OrderSide, PositionSide, Order
 from infr.constant import MAKER_FEE, TAKER_FEE
@@ -72,7 +73,15 @@ class CutLogic(metaclass=ABCMeta):
             print('Failed to upload to ftp: ' + str(e))
 
     def _stop_loss(self, client: RequestClient):
-        ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00688)
+        ls = LossStoper(client=client, position=self.cutOrder.position, stopRate=0.00268)
+        pos_info  = json.dumps(self.cutOrder.position.__dict__)
+        dto_info = json.dumps(self.cutOrder.payload.to_dict())
+        current_stop_sum_amt = order_utils.sum_amt(self.cutOrder.stopOrders)
+        logging.warning(f'''
+            pos_info = {pos_info}
+            dto_info = {dto_info}
+            current_stop_sum_amt = {current_stop_sum_amt}
+        ''')
         ls.stop()
 
     @abstractmethod

@@ -84,13 +84,6 @@ class TrailPicker:
         self.add_points(field='guardRange', val=self.dto.guardRange, pickState='start', time=time)
 
     def log_result(self, r: CheckedResult, odto: PostOrderDto, ts: TradeSet):
-        msg = f'''
-            amt {r.amount} / {self.dto.triggerAmt}
-            groupNum {r.groupNum} / {self.dto.timeGrpSize}
-            rsi {r.rsi} / {self.dto.rsi}
-            success {r.success} 
-        '''
-        logging.warning(msg)
         time = datetime.datetime.now(tz=datetime.timezone.utc)
         self.add_points(field='finalAmount', val=r.amount, pickState='result', time=time)
         self.add_points(field='finalRsi', val=r.rsi, pickState='result', time=time)

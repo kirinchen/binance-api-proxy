@@ -1,4 +1,3 @@
-
 from typing import List
 
 from binance_f import RequestClient
@@ -45,10 +44,10 @@ def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     pl = PostOrderDto(**payload)
-    post_order(client,pl)
+    post_order(client, pl)
 
 
-def post_order(client: RequestClient,pl:PostOrderDto):
+def post_order(client: RequestClient, pl: PostOrderDto):
     account: AccountInformation = client.get_account_information()
     leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount
@@ -94,6 +93,8 @@ def post_order(client: RequestClient,pl:PostOrderDto):
 
 def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symbol: Symbol, stopPrice: float,
                     quantity: float) -> Order:
+    positionSide = PositionSide.SHORT if stop_side == OrderSide.BUY else PositionSide.LONG
+
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
@@ -102,7 +103,7 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symb
         timeInForce=TimeInForce.GTC,
         ordertype=OrderType.STOP_MARKET,
         workingType=WorkingType.CONTRACT_PRICE,
-        positionSide=PositionSide.LONG,
+        positionSide=positionSide,
         stopPrice=stopPrice,
         # closePosition=False,
         quantity=quantity,
