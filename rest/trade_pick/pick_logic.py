@@ -7,6 +7,7 @@ from utils.rsi_utils import RSIResult
 from utils.trade_utils import TradeSet
 
 
+
 class PickLogic(metaclass=ABCMeta):
 
     def __init__(self, dto: TrailPickDto):

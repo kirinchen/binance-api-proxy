@@ -1,8 +1,11 @@
+import calendar
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Dict
+from tzlocal import get_localzone
 
 from binance_f.model import Trade, AggregateTradeEvent
+from utils.time_utils import parse_time_stamp, to_time_utc_iso
 
 
 class TradeInfo(metaclass=ABCMeta):
@@ -26,6 +29,12 @@ class TradeInfo(metaclass=ABCMeta):
     @abstractmethod
     def isBuyerMaker(self) -> bool:
         pass
+
+    def get_time_obj(self) -> datetime:
+        return parse_time_stamp(self.time() / 1000)
+
+    def get_time_utc_iso(self) -> str:
+        return to_time_utc_iso(self.get_time_obj())
 
 
 class TradeEvent(TradeInfo):
@@ -83,8 +92,9 @@ class TradeRange:
         self.highAmount = 0
         self.highAmountAt: datetime = None
         self.trades: List[TradeInfo] = list()
+        self.timeValMap: Dict[str, float] = None
 
-    def subtotal(self):
+    def subtotal(self, time_maped: bool = False):
         try:
             amt = 0
             sup = 0
@@ -105,6 +115,11 @@ class TradeRange:
             le = self.clac_max('time')
             self.lastPrice = le.price()
             self.lastAt = datetime.fromtimestamp(le.time() / 1000)
+
+            if not time_maped:
+                return
+            self.timeValMap = gen_time_val_map(self)
+
         except Exception as e:  # work on python 3.x
             print(e)
 
@@ -121,10 +136,10 @@ class TradeRange:
         ans = dict()
         for k, v in self.__dict__.items():
             if k == 'trades':
-                ans[k] = [r.get_data().__dict__ for r in self.trades]
+                # ans[k] = [r.get_data().__dict__ for r in self.trades]
                 continue
             if type(v) == datetime:
-                ans[k] = v.isoformat()
+                ans[k] = to_time_utc_iso(v)
                 continue
 
             ans[k] = v
@@ -138,10 +153,10 @@ class TradeSet:
         self.buy = TradeRange()
         self.all = TradeRange()
 
-    def subtotal(self):
-        self.sell.subtotal()
-        self.buy.subtotal()
-        self.all.subtotal()
+    def subtotal(self, time_maped: bool = False):
+        self.sell.subtotal(time_maped)
+        self.buy.subtotal(time_maped)
+        self.all.subtotal(time_maped)
 
     def append(self, t: TradeInfo):
         if t.isBuyerMaker():
@@ -157,6 +172,13 @@ class TradeSet:
         }
 
 
+def gen_time_val_map(ts: TradeRange) -> Dict[str, float]:
+    ans: Dict[str, float] = dict()
+    for t in ts.trades:
+        ans[t.get_time_utc_iso()] = t.price()
+    return ans
+
+
 def convert_traded_info(ts: List[Trade]) -> List[TradeInfo]:
     return [Tradeed(t) for t in ts]
 
@@ -165,9 +187,9 @@ def convert_event_info(ts: List[AggregateTradeEvent]) -> List[TradeInfo]:
     return [TradeEvent(t) for t in ts]
 
 
-def gen_subtotal_result(ts: List[TradeInfo]) -> TradeSet:
+def gen_subtotal_result(ts: List[TradeInfo], time_maped: bool = False) -> TradeSet:
     ans = TradeSet()
     for t in ts:
         ans.append(t)
-    ans.subtotal()
+    ans.subtotal(time_maped)
     return ans

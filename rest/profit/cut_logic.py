@@ -63,7 +63,7 @@ class CutLogic(metaclass=ABCMeta):
     def post_stop_order_all(self, client: RequestClient):
         if self.stepQuantity <= self.cutOrder.symbol.get_min_amount():
             self.post_stop_order(client, self.calc_step_prices()[0], self.get_pos_amt())
-            return 
+            return
         for sp in self.calc_step_prices():
             self.post_stop_order(client, sp, self.stepQuantity)
 

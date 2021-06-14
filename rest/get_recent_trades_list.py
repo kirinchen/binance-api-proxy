@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from binance_f import RequestClient
 from binance_f.constant.test import *
@@ -22,11 +22,13 @@ def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     sbl: Symbol = Symbol.get(payload.get('symbol'))
     limit = payload.get('limit')
-    ans = fetch(client, sbl, limit)
-    return ans.to_struct()
+    timeMaped: bool = payload.get('timeMaped', False)
+    ts = fetch(client, sbl, limit, timeMaped)
+
+    return ts.to_struct()
 
 
-def fetch(client: RequestClient, sbl: Symbol, limit: int) -> TradeSet:
+def fetch(client: RequestClient, sbl: Symbol, limit: int, timeMaped: bool = False) -> TradeSet:
     result: List[Trade] = client.get_recent_trades_list(symbol=f'{sbl.symbol}USDT', limit=limit)
-    ans = trade_utils.gen_subtotal_result(trade_utils.convert_traded_info(result))
+    ans = trade_utils.gen_subtotal_result(trade_utils.convert_traded_info(result), timeMaped)
     return ans
