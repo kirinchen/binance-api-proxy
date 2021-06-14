@@ -168,7 +168,8 @@ class TradeSet:
     def to_struct(self) -> dict:
         return {
             'sell': self.sell.to_struct(),
-            'buy': self.buy.to_struct()
+            'buy': self.buy.to_struct(),
+            'all': self.all.to_struct(),
         }
 
 
