@@ -44,7 +44,7 @@ def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     pl = PostOrderDto(**payload)
-    post_order(client, pl)
+    return post_order(client, pl)
 
 
 def post_order(client: RequestClient, pl: PostOrderDto):

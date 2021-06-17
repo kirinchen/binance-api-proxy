@@ -16,7 +16,7 @@ class Symbol(Enum):
     LTC = ('LTC', 'Litecoin', 2, 3)
     XRP = ('XRP', 'XRP', 4, 1)
     EOS = ('EOS', 'EOS', 3, 1)
-    BNB = ('BNB', 'Binance Coin', 3, 2)
+    BNB = ('BNB', 'Binance Coin', 2, 2)
 
     def gen_with_usdt(self) -> str:
         return f'{self.symbol}USDT'
