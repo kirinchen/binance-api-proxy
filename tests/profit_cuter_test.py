@@ -33,7 +33,7 @@ symbol = Symbol.ETH
 
 def gen_payload(positionSide: str) -> CutProfitDto:
     return CutProfitDto(symbol=symbol.symbol, profitRate=0.2, topRate=0.85, cutCount=3, positionSide=positionSide,
-                        bottomRate=-0.005, minStepRate=0.003)
+                        bottomRate=-0.005, minStepRate=0.003,stepSizeRate=0.0001)
 
 
 def gen_pos(positionSide: str) -> Position:
@@ -42,8 +42,8 @@ def gen_pos(positionSide: str) -> Position:
     pos.positionSide = positionSide
     pos.positionAmt = 10
     pos.leverage = 100
-    pos.markPrice = 5000 if positionSide == PositionSide.LONG else 4980
-    pos.entryPrice = 4980 if positionSide == PositionSide.LONG else 5000
+    pos.markPrice = 5100 if positionSide == PositionSide.LONG else 4900
+    pos.entryPrice = 4900 if positionSide == PositionSide.LONG else 5100
     return pos
 
 

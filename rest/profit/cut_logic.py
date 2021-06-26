@@ -95,7 +95,7 @@ class CutLogic(metaclass=ABCMeta):
         ls.stop()
 
     @abstractmethod
-    def check_over_soon_order(self):
+    def check_over_soon_order(self) -> bool:
         pass
 
     @abstractmethod
@@ -132,10 +132,13 @@ class LongCutLogic(CutLogic):
     def __init__(self, cd: ProfitCuter):
         super().__init__(cd)
 
-    def check_over_soon_order(self):
+    def check_over_soon_order(self) -> bool:
+        ps = self.calc_step_prices()
+        if len(ps) <= 0:
+            return False
         new_soon_price = self.calc_step_prices()[0]
         old_soon_price = self.currentOds[0].stopPrice
-        return new_soon_price > old_soon_price
+        return (new_soon_price - old_soon_price) / old_soon_price > self.cutOrder.payload.stepSizeRate
 
     def sort_soon_orders(self):
         self.currentOds.sort(key=lambda s: -s.stopPrice)
@@ -172,10 +175,13 @@ class ShortCutLogic(CutLogic):
     def __init__(self, cd: ProfitCuter):
         super().__init__(cd)
 
-    def check_over_soon_order(self):
-        new_soon_price = self.calc_step_prices()[0]
+    def check_over_soon_order(self) -> bool:
+        ps = self.calc_step_prices()
+        if len(ps) <= 0:
+            return False
+        new_soon_price = ps[0]
         old_soon_price = self.currentOds[0].stopPrice
-        return new_soon_price < old_soon_price
+        return (new_soon_price - old_soon_price) / old_soon_price < -self.cutOrder.payload.stepSizeRate
 
     def get_spread(self) -> float:
         return self.entryPrice - self.markPrice
