@@ -3,7 +3,7 @@ from market.Symbol import Symbol
 
 class CutProfitDto:
     def __init__(self, symbol: str, profitRate: float, topRate: float, cutCount: int, positionSide: str,
-                 minStepRate: float, bottomRate: float, stepMoveOnRate: float = 0):
+                 bottomRate: float, stepMoveOnRate: float = 0):
         self.profitRate = profitRate
         self.topRate = topRate
         self.cutCount = cutCount
