@@ -33,7 +33,7 @@ symbol = Symbol.ETH
 
 def gen_payload(positionSide: str) -> CutProfitDto:
     return CutProfitDto(symbol=symbol.symbol, profitRate=0.2, topRate=0.85, cutCount=3, positionSide=positionSide,
-                        bottomRate=-0.005, minStepRate=0.003,stepSizeRate=0.0001)
+                        bottomRate=-0.005, minStepRate=0.003, stepMoveOnRate=0.0001)
 
 
 def gen_pos(positionSide: str) -> Position:

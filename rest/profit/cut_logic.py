@@ -138,7 +138,7 @@ class LongCutLogic(CutLogic):
             return False
         new_soon_price = self.calc_step_prices()[0]
         old_soon_price = self.currentOds[0].stopPrice
-        return (new_soon_price - old_soon_price) / old_soon_price > self.cutOrder.payload.stepSizeRate
+        return (new_soon_price - old_soon_price) / old_soon_price > self.cutOrder.payload.stepMoveOnRate
 
     def sort_soon_orders(self):
         self.currentOds.sort(key=lambda s: -s.stopPrice)
@@ -157,9 +157,7 @@ class LongCutLogic(CutLogic):
         dsp = dp / self.cutOrder.payload.cutCount
         for i in range(self.cutOrder.payload.cutCount):
             pp = (dsp * (i + 1))
-            ppr = pp / bottomPrice
-            if ppr >= dto.minStepRate:
-                ans.append(pp + bottomPrice)
+            ans.append(pp + bottomPrice)
         ans.reverse()
         return ans
 
@@ -181,7 +179,7 @@ class ShortCutLogic(CutLogic):
             return False
         new_soon_price = ps[0]
         old_soon_price = self.currentOds[0].stopPrice
-        return (new_soon_price - old_soon_price) / old_soon_price < -self.cutOrder.payload.stepSizeRate
+        return (new_soon_price - old_soon_price) / old_soon_price < -self.cutOrder.payload.stepMoveOnRate
 
     def get_spread(self) -> float:
         return self.entryPrice - self.markPrice
@@ -194,9 +192,7 @@ class ShortCutLogic(CutLogic):
         dsp = dp / self.cutOrder.payload.cutCount
         for i in range(self.cutOrder.payload.cutCount):
             pp = (dsp * (i + 1))
-            ppr = pp / bottomPrice
-            if ppr >= dto.minStepRate:
-                ans.append(bottomPrice - pp)
+            ans.append(bottomPrice - pp)
         ans.reverse()
         return ans
 
