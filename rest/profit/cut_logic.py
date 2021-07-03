@@ -68,11 +68,14 @@ class CutLogic(metaclass=ABCMeta):
             self.post_stop_order(client, sp, self.stepQuantity)
 
     def post_stop_order(self, client: RequestClient, sp: float, q: float):
-        nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
-                                          stop_side=self.get_stop_side(),
-                                          stopPrice=sp,
-                                          tags=['stop'],
-                                          quantity=q)
+        try:
+            nods = post_order.post_stop_order(client=client, symbol=self.cutOrder.symbol,
+                                              stop_side=self.get_stop_side(),
+                                              stopPrice=sp,
+                                              tags=['stop'],
+                                              quantity=q)
+        except Exception as e:  # work on python 3.x
+            logging.error('Failed to upload to ftp: ' + str(e))
 
     def clean_old_order(self, client: RequestClient):
         try:
