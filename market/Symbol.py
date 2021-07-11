@@ -17,6 +17,8 @@ class Symbol(Enum):
     XRP = ('XRP', 'XRP', 4, 1)
     EOS = ('EOS', 'EOS', 3, 1)
     BNB = ('BNB', 'Binance Coin', 2, 2)
+    DOT = ('DOT', 'Polkadot', 3, 1)
+    ADA = ('ADA', 'Cardano', 4, 0)
 
     def gen_with_usdt(self) -> str:
         return f'{self.symbol}USDT'
