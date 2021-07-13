@@ -1,7 +1,8 @@
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
+from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order, \
+    Position
 from infr import constant
 from market.Symbol import Symbol
 from rest import get_recent_trades_list
@@ -47,8 +48,27 @@ def run(client: RequestClient, payload: dict):
     return post_order(client, pl)
 
 
+def _get_position(poss:List[Position],order_position:str,sbl:Symbol)->Position:
+    for p in poss:
+        if p.positionSide != order_position:
+            continue
+        if p.symbol == sbl.gen_with_usdt():
+            return p
+    raise TypeError(f'{order_position} {sbl.gen_with_usdt()} not find pos')
+
+def _calc_quantity(p:Position,quote :float,pl: PostOrderDto)->float:
+    #TODO
+    pass
+
 def post_order(client: RequestClient, pl: PostOrderDto):
     account: AccountInformation = client.get_account_information()
+
+    order_side = OrderSide.SELL if pl.selled else OrderSide.BUY
+    stop_side = OrderSide.BUY if pl.selled else OrderSide.SELL
+    order_position = PositionSide.SHORT if pl.selled else PositionSide.LONG
+
+    position = _get_position(account.positions, order_position, pl.symbol)
+
     leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount
     quote = calc_quote(client, pl)
@@ -58,10 +78,8 @@ def post_order(client: RequestClient, pl: PostOrderDto):
     else:
         max_stop = quote * (1 - pl.guardRange)
 
-    order_side = OrderSide.SELL if pl.selled else OrderSide.BUY
-    stop_side = OrderSide.BUY if pl.selled else OrderSide.SELL
 
-    order_position = PositionSide.SHORT if pl.selled else PositionSide.LONG
+
 
     gid = gen_group_uid()
     pl.tags.append(gid)
