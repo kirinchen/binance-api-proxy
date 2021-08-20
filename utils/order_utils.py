@@ -28,8 +28,8 @@ class OrderFilter:
         self.orderType = orderType
         self.notOrderType = notOrderType
         self.status = status
-        self.updateStartTime = dateutil.parser.parse(updateStartAt).timestamp() * 1000
-        self.updateEndTime = dateutil.parser.parse(updateEndAt).timestamp() * 1000
+        self.updateStartTime = dateutil.parser.parse(updateStartAt).timestamp() * 1000 if updateStartAt else None
+        self.updateEndTime = dateutil.parser.parse(updateEndAt).timestamp() * 1000 if updateEndAt else None
         self.classify: bool = classify
 
     def get_symbole(self):
