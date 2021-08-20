@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Dict, Any
 
+import dateutil.parser
 import pytz
 
 from binance_f.model import Order
@@ -15,7 +16,11 @@ class OrderFilter:
     def __init__(self, symbol: str = None, side: str = None, orderType: str = None, notOrderType: str = None,
                  tags: List[str] = list(),
                  excludeTags: List[str] = list(),
-                 status: str = None):
+                 status: str = None,
+                 classify: bool = False,
+                 updateStartAt: str = None,
+                 updateEndAt: str = None,
+                 **kwargs):
         self.symbol = symbol
         self.side = side
         self.tags = tags
@@ -23,6 +28,9 @@ class OrderFilter:
         self.orderType = orderType
         self.notOrderType = notOrderType
         self.status = status
+        self.updateStartTime = dateutil.parser.parse(updateStartAt).timestamp() * 1000
+        self.updateEndTime = dateutil.parser.parse(updateEndAt).timestamp() * 1000
+        self.classify: bool = classify
 
     def get_symbole(self):
         return Symbol.get(self.symbol)
@@ -31,6 +39,7 @@ class OrderFilter:
 class SubtotalBundle:
     def __init__(self):
         self.lastAt: datetime = None
+        self.executedQty = 0
         self.orders: List[Order] = list()
 
     def subtotal(self):
@@ -39,11 +48,15 @@ class SubtotalBundle:
         self.orders.sort(key=lambda s: s.updateTime, reverse=True)
         ups = self.orders[0].updateTime / 1000
         self.lastAt = datetime.fromtimestamp(ups, pytz.utc)
+        for e in self.orders:
+            e.updateAt = datetime.fromtimestamp(e.updateTime / 1000, pytz.utc).isoformat()
+            self.executedQty += e.executedQty
 
     def to_struct(self):
         return {
             'lastAt': self.lastAt.isoformat() if self.lastAt else None,
-            'orders': [o.__dict__ for o in self.orders]
+            'orders': [o.__dict__ for o in self.orders],
+            'executedQty': self.executedQty
         }
 
 
@@ -60,12 +73,9 @@ class StatusMap:
 
 def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
     PayloadReqKey.clean_default_keys(payload)
-    cb: bool = payload.get(ORDER_CLASSIFLY_KEY, False)
-    if ORDER_CLASSIFLY_KEY in payload:
-        del payload[ORDER_CLASSIFLY_KEY]
     pl = OrderFilter(**payload)
     result = filter_order(oods, pl)
-    if cb:
+    if pl.classify:
         cmap = classify_by_status(result)
         return cmap.to_struct()
     else:
@@ -88,6 +98,10 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
         if len(ft.tags) > 0 and not comm_utils.contains_tags(ods.clientOrderId, ft.tags):
             continue
         if len(ft.excludeTags) > 0 and comm_utils.contains_tags(ods.clientOrderId, ft.excludeTags):
+            continue
+        if ft.updateStartTime and ods.updateTime < ft.updateStartTime:
+            continue
+        if ft.updateEndTime and ods.updateTime > ft.updateEndTime:
             continue
         ans.orders.append(ods)
     ans.subtotal()
