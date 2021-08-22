@@ -18,7 +18,7 @@ class OrderFilter:
                  untags: List[str] = list(),
                  excludeTags: List[str] = list(),
                  status: str = None,
-                 classify: bool = False,
+                 group: List[str] = list(),
                  updateStartAt: str = None,
                  updateEndAt: str = None,
                  **kwargs):
@@ -32,17 +32,19 @@ class OrderFilter:
         self.status = status
         self.updateStartTime = dateutil.parser.parse(updateStartAt).timestamp() * 1000 if updateStartAt else None
         self.updateEndTime = dateutil.parser.parse(updateEndAt).timestamp() * 1000 if updateEndAt else None
-        self.classify: bool = classify
+        self.group: List[str] = group
 
     def get_symbole(self):
         return Symbol.get(self.symbol)
 
 
 class SubtotalBundle:
-    def __init__(self):
+    def __init__(self, group: str = None):
         self.lastAt: datetime = None
         self.executedQty = 0
         self.orders: List[Order] = list()
+        self.group = group
+        self.groupMap: Dict[str, SubtotalBundle] = dict()
 
     def subtotal(self):
         if len(self.orders) <= 0:
@@ -54,12 +56,33 @@ class SubtotalBundle:
             e.updateAt = datetime.fromtimestamp(e.updateTime / 1000, pytz.utc).isoformat()
             self.executedQty += e.executedQty
 
+        if self.group:
+            self.groupMap = self._group_by()
+
+    def _group_by(self, ) -> Dict[str, object]:
+        ans: Dict[str, SubtotalBundle] = dict()
+        for od in self.orders:
+            groupv = getattr(od, self.group)
+            g_sub_bundle = ans.get(groupv, SubtotalBundle())
+            g_sub_bundle.orders.append(od)
+            ans[groupv] = g_sub_bundle
+        for k, v in ans.items():
+            v.subtotal()
+        return ans
+
     def to_struct(self):
-        return {
+        ans = {
             'lastAt': self.lastAt.isoformat() if self.lastAt else None,
-            'orders': [o.__dict__ for o in self.orders],
             'executedQty': self.executedQty
         }
+        if self.group:
+            ans['group'] = self.group
+            ans['groupMap'] = dict()
+            for k, v in self.groupMap.items():
+                ans['groupMap'][k] = v.to_struct()
+        else:
+            ans['orders'] = [o.__dict__ for o in self.orders]
+        return ans
 
 
 class StatusMap:
@@ -77,15 +100,11 @@ def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
     PayloadReqKey.clean_default_keys(payload)
     pl = OrderFilter(**payload)
     result = filter_order(oods, pl)
-    if pl.classify:
-        cmap = classify_by_status(result)
-        return cmap.to_struct()
-    else:
-        return result.to_struct()
+    return result.to_struct()
 
 
 def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
-    ans = SubtotalBundle()
+    ans = SubtotalBundle(ft.group[0] if ft.group else None )
     for ods in oods:
         if ft.orderType and ods.type != ft.orderType:
             continue
@@ -112,28 +131,15 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
     return ans
 
 
-def classify_by_status(sb: SubtotalBundle) -> StatusMap:
-    ans = StatusMap()
-    for od in sb.orders:
-        if od.status not in ans.map:
-            ans.map[od.status] = SubtotalBundle()
-        ans.map[od.status].orders.append(od)
-    for k, v in ans.map.items():
-        v.subtotal()
-    return ans
+def _group_bys(sb: SubtotalBundle, fields: List[str]) -> dict:
+    ans = dict()
 
+    d = _group_by(sb, fields[0])
+    if len(fields) == 1:
+        for k, v in d.items():
+            ans[k] = v.to_struct()
+        return ans
 
-EMPTY_TAG = '==EMPTY=='
-
-
-def classify_by_group(ods: List[Order]) -> Dict[str, List[Order]]:
-    ans = dict();
-    for od in ods:
-        guid = comm_utils.parse_group_uid(comm_utils.parse_tags(od.clientOrderId))
-        k = EMPTY_TAG if guid is None else guid
-        if k not in ans:
-            ans[k] = list()
-        ans[k].append(od)
     return ans
 
 
