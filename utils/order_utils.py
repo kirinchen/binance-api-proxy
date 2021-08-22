@@ -15,6 +15,7 @@ class OrderFilter:
 
     def __init__(self, symbol: str = None, side: str = None, orderType: str = None, notOrderType: str = None,
                  tags: List[str] = list(),
+                 untags: List[str] = list(),
                  excludeTags: List[str] = list(),
                  status: str = None,
                  classify: bool = False,
@@ -24,6 +25,7 @@ class OrderFilter:
         self.symbol = symbol
         self.side = side
         self.tags = tags
+        self.untags = untags
         self.excludeTags = excludeTags
         self.orderType = orderType
         self.notOrderType = notOrderType
@@ -96,6 +98,8 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
         if ft.status and ft.status != ods.status:
             continue
         if len(ft.tags) > 0 and not comm_utils.contains_tags(ods.clientOrderId, ft.tags):
+            continue
+        if len(ft.untags) > 0 and comm_utils.contains_tags(ods.clientOrderId, ft.untags):
             continue
         if len(ft.excludeTags) > 0 and comm_utils.contains_tags(ods.clientOrderId, ft.excludeTags):
             continue
