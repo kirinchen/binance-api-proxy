@@ -104,7 +104,7 @@ def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
 
 
 def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
-    ans = SubtotalBundle(ft.group[0] if ft.group else None )
+    ans = SubtotalBundle(ft.group[0] if ft.group else None)
     for ods in oods:
         if ft.orderType and ods.type != ft.orderType:
             continue
@@ -128,18 +128,6 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
             continue
         ans.orders.append(ods)
     ans.subtotal()
-    return ans
-
-
-def _group_bys(sb: SubtotalBundle, fields: List[str]) -> dict:
-    ans = dict()
-
-    d = _group_by(sb, fields[0])
-    if len(fields) == 1:
-        for k, v in d.items():
-            ans[k] = v.to_struct()
-        return ans
-
     return ans
 
 
