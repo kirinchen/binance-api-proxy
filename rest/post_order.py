@@ -32,13 +32,25 @@ def fix_precision(p: int, fv: float):
 
 def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
     rate = 1 + pl.currentMove if pl.selled else 1 - pl.currentMove
+    cur_quote = _get_current_quote(client, pl)
     if pl.quote is None:
-        cqr = get_recent_trades_list.fetch(client, pl.symbol, 200)
-        cq = cqr.sell.avgPrice if pl.selled else cqr.buy.avgPrice
-
-        return cq * rate
+        return cur_quote * rate
     else:
-        return pl.quote * rate
+        order_quote = pl.quote * rate
+        return _get_safe_quote(cur_quote, order_quote, pl.selled)
+
+
+def _get_safe_quote(current_quote: float, order_quote: float, selled: bool) -> float:
+    if selled:
+        return max(current_quote, order_quote)
+    else:
+        return min(current_quote, order_quote)
+
+
+def _get_current_quote(client: RequestClient, pl: PostOrderDto) -> float:
+    cqr = get_recent_trades_list.fetch(client, pl.symbol, 200)
+    cq = cqr.sell.avgPrice if pl.selled else cqr.buy.avgPrice
+    return cq
 
 
 def run(client: RequestClient, payload: dict):
