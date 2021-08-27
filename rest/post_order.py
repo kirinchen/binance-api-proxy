@@ -54,9 +54,13 @@ def _get_current_quote(client: RequestClient, pl: PostOrderDto) -> float:
 
 
 def run(client: RequestClient, payload: dict):
-    PayloadReqKey.clean_default_keys(payload)
-    pl = PostOrderDto(**payload)
-    return post_order(client, pl)
+    try:
+        PayloadReqKey.clean_default_keys(payload)
+        pl = PostOrderDto(**payload)
+        return post_order(client, pl)
+    except Exception as e:  # work on python 3.x
+        return str(e)
+
 
 
 def _calc_quantity(account: AccountInformation, quote: float, pl: PostOrderDto) -> float:
