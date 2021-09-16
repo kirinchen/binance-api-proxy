@@ -5,7 +5,7 @@ import dateutil.parser
 import pytz
 
 from binance_f.model import Order
-from infr.constant import ORDER_CLASSIFLY_KEY
+from binance_f import RequestClient
 from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
@@ -21,7 +21,7 @@ class OrderFilter:
                  group: List[str] = list(),
                  updateStartAt: str = None,
                  updateEndAt: str = None,
-                 **kwargs):
+                 limit: int = None, **kwargs):
         self.symbol = symbol
         self.side = side
         self.tags = tags
@@ -30,9 +30,10 @@ class OrderFilter:
         self.orderType = orderType
         self.notOrderType = notOrderType
         self.status = status
-        self.updateStartTime = dateutil.parser.parse(updateStartAt).timestamp() * 1000 if updateStartAt else None
-        self.updateEndTime = dateutil.parser.parse(updateEndAt).timestamp() * 1000 if updateEndAt else None
+        self.updateStartTime: int = dateutil.parser.parse(updateStartAt).timestamp() * 1000 if updateStartAt else None
+        self.updateEndTime: int = dateutil.parser.parse(updateEndAt).timestamp() * 1000 if updateEndAt else None
         self.group: List[str] = group
+        self.limit: int = limit
 
     def get_symbole(self):
         return Symbol.get(self.symbol)
@@ -94,6 +95,12 @@ class StatusMap:
         for k, v in self.map.items():
             ans[k] = v.to_struct()
         return ans
+
+
+def fetch_order(client: RequestClient, pl: OrderFilter) -> SubtotalBundle:
+    oods: List[Order] = client.get_all_orders(symbol=pl.get_symbole().gen_with_usdt(), limit=pl.limit,
+                                              startTime=pl.updateStartTime, endTime=pl.updateEndTime)
+    return filter_order(oods, pl)
 
 
 def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
