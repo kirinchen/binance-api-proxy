@@ -62,7 +62,6 @@ def run(client: RequestClient, payload: dict):
         return str(e)
 
 
-
 def _calc_quantity(account: AccountInformation, quote: float, pl: PostOrderDto) -> float:
     leverage_ratio = pl.investedRate / pl.guardRange
     amount = account.maxWithdrawAmount
@@ -119,7 +118,10 @@ def post_order(client: RequestClient, pl: PostOrderDto):
     }
 
 
-def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symbol: Symbol, stopPrice: float,
+
+
+def post_stop_order(client: RequestClient, tags: List[str], stop_side: str,
+                    symbol: Symbol, stopPrice: float,
                     quantity: float) -> Order:
     positionSide = PositionSide.SHORT if stop_side == OrderSide.BUY else PositionSide.LONG
 
@@ -138,7 +140,3 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str, symb
         newClientOrderId=comm_utils.get_order_cid(tags)
     )
     return result
-
-
-def _test(a: str, b: int, c: str):
-    print(f'{a}{b}{c}')

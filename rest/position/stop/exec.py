@@ -1,9 +1,6 @@
-from typing import List
-
 from binance_f import RequestClient
-from binance_f.model import Order
 from utils import order_utils
-from utils.order_utils import filter_order_by_payload, OrderFilter
+from utils.order_utils import OrderFilter
 
 
 def run(client: RequestClient, payload: dict):
