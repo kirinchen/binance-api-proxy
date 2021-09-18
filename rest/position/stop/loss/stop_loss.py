@@ -13,11 +13,12 @@ from utils.position_utils import PositionFilter, filter_position
 
 class StopLossDto:
 
-    def __init__(self, symbol: str, positionSide: str, balanceRate: float, restopRate: float):
+    def __init__(self, symbol: str, positionSide: str, balanceRate: float, restopRate: float, tags: List[str] = list()):
         self.balanceRate: float = balanceRate
         self.symbol: str = symbol
         self.positionSide: str = positionSide
         self.restopRate: float = restopRate
+        self.tags: List[str] = tags
 
     def get_symbol(self) -> Symbol:
         return Symbol.get(self.symbol)
@@ -25,12 +26,15 @@ class StopLossDto:
 
 class StopLoss:
 
-    def __init__(self, client: RequestClient, tags: List[str], dto: StopLossDto):
+    def __init__(self, client: RequestClient, dto: StopLossDto):
+        self.state: StopState = StopState.LOSS
         self.client: RequestClient = client
         self.dto: StopLossDto = dto
-        self.tags = self._setup_tags(tags)
         self.position = self.get_current_position()
-        self.state: StopState = StopState.LOSS
+        self.no_position = position_utils.get_abs_amt(self.position) <= 0
+        if self.no_position:
+            return
+        self.tags = self._setup_tags(dto.tags)
         (self.currentStopOds, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(self.client,
                                                                                                             self.position)
         self.stopPrice: float = self.get_stop_quote()
@@ -54,6 +58,8 @@ class StopLoss:
         return position_stop_utils.clac_guard_price(self.position, guard_amt)
 
     def _is_restop_order(self):
+        if self.no_position:
+            return False
         if position_utils.get_abs_amt(self.position.positionAmt) != self.currentStopOds.executedQty:
             return True
         if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOdAvgPrice,

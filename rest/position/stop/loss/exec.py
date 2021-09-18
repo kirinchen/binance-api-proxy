@@ -9,6 +9,5 @@ def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     dto: StopLossDto = StopLossDto(**payload)
     stop_loss: StopLoss = StopLoss(client,dto)
-    ps = stop_loss.get_current_position()
-    pos = [r.__dict__ for r in ps]
-    return pos
+    p = stop_loss.get_current_position()
+    return p.__dict__

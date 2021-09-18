@@ -27,15 +27,17 @@ def get_stop_order_side(positionSide: str) -> str:
 
 def get_current_new_stop_orders(client: RequestClient, p: Position) -> (SubtotalBundle, float):
     symbol: Symbol = Symbol.get_with_usdt(p.symbol)
-    stop_order_side: str = get_stop_order_side(p)
+    stop_order_side: str = get_stop_order_side(p.positionSide)
     of = OrderFilter(symbol=symbol.symbol,
                      orderType=OrderType.STOP_MARKET,
                      status='NEW',
                      side=stop_order_side
                      )
     ans = order_utils.fetch_order(client, of)
-
+    if ans.executedQty <= 0:
+        return ans, 0
     sump = 0
+
     for o in ans.orders:
         sump += o.executedQty * o.stopPrice
     avgp = sump / ans.executedQty
