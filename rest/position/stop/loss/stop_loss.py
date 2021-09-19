@@ -1,10 +1,11 @@
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import Position, AccountInformation
+from binance_f.model import Position, AccountInformation, Order
 from market.Symbol import Symbol
 from rest import post_order
 from rest.position.stop import position_stop_utils
+from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from utils import position_utils
 from utils.order_utils import SubtotalBundle
@@ -40,7 +41,7 @@ class StopLoss:
         self.stopPrice: float = self.get_stop_quote()
 
     def _setup_tags(self, tags: List[str]) -> List[str]:
-        tags.append(self.state)
+        tags.append(self.state.value)
         return tags
 
     def get_current_position(self) -> Position:
@@ -57,25 +58,28 @@ class StopLoss:
         guard_amt = amount * self.dto.balanceRate
         return position_stop_utils.clac_guard_price(self.position, guard_amt)
 
-    def _is_restop_order(self):
+    def _is_order_restopable(self):
         if self.no_position:
             return False
-        if position_utils.get_abs_amt(self.position.positionAmt) != self.currentStopOds.executedQty:
+        if position_utils.get_abs_amt(self.position) != self.currentStopOds.executedQty:
             return True
         if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOdAvgPrice,
                                                         self.dto.restopRate):
             return True
         return False
 
-    def stop(self):
-        if self._is_restop_order():
-            self.post_order()
+    def stop(self) -> StopResult:
+        ans = StopResult()
+        if self._is_order_restopable():
+            ans.orders = [self.post_order()]
+            ans.active = True
+        return ans
 
-    def post_order(self):
-        post_order.post_stop_order(client=self.client
-                                   , tags=self.tags
-                                   , stop_side=position_stop_utils.get_stop_order_side(self.position.positionSide)
-                                   , symbol=self.dto.get_symbol()
-                                   , quantity=position_utils.get_abs_amt(self.position)
-                                   , stopPrice=self.stopPrice
-                                   )
+    def post_order(self) -> Order:
+        return post_order.post_stop_order(client=self.client
+                                          , tags=self.tags
+                                          , stop_side=position_stop_utils.get_stop_order_side(self.position.positionSide)
+                                          , symbol=self.dto.get_symbol()
+                                          , quantity=position_utils.get_abs_amt(self.position)
+                                          , stopPrice=self.stopPrice
+                                          )
