@@ -8,7 +8,6 @@ from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from utils import position_utils
-from utils.order_utils import SubtotalBundle
 from utils.position_utils import PositionFilter, filter_position
 
 
@@ -71,6 +70,8 @@ class StopLoss:
     def stop(self) -> StopResult:
         ans = StopResult()
         if self._is_order_restopable():
+            position_stop_utils.clean_old_orders(client=self.client, symbol=self.dto.get_symbol(),
+                                                 currentOds=self.currentStopOds)
             ans.orders = [self.post_order()]
             ans.active = True
         return ans
@@ -78,7 +79,8 @@ class StopLoss:
     def post_order(self) -> Order:
         return post_order.post_stop_order(client=self.client
                                           , tags=self.tags
-                                          , stop_side=position_stop_utils.get_stop_order_side(self.position.positionSide)
+                                          ,
+                                          stop_side=position_stop_utils.get_stop_order_side(self.position.positionSide)
                                           , symbol=self.dto.get_symbol()
                                           , quantity=position_utils.get_abs_amt(self.position)
                                           , stopPrice=self.stopPrice

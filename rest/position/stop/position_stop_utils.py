@@ -1,7 +1,8 @@
 from enum import Enum
+from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import OrderSide, PositionSide, Position, OrderType
+from binance_f.model import OrderSide, PositionSide, Position, OrderType, Order
 from market.Symbol import Symbol
 from utils import order_utils
 from utils.order_utils import SubtotalBundle, OrderFilter
@@ -47,3 +48,12 @@ def get_current_new_stop_orders(client: RequestClient, p: Position) -> (Subtotal
 def is_difference_over_range(source: float, target: float, rate: float):
     r: float = 1 - (target / source)
     return r > rate
+
+
+def clean_old_orders(client: RequestClient, symbol: Symbol, currentOds: List[Order]):
+    try:
+        if currentOds and len(currentOds) > 0:
+            result = client.cancel_list_orders(symbol=symbol.gen_with_usdt(),
+                                               orderIdList=[od.orderId for od in currentOds])
+    except Exception as e:  # work on python 3.x
+        print('Failed to upload to ftp: ' + str(e))
