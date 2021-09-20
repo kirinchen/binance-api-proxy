@@ -8,6 +8,7 @@ from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from utils import position_utils
+from utils.order_utils import SubtotalBundle
 from utils.position_utils import PositionFilter, filter_position
 
 
@@ -35,8 +36,9 @@ class StopLoss:
         if self.no_position:
             return
         self.tags = self._setup_tags(dto.tags)
-        (self.currentStopOds, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(self.client,
-                                                                                                            self.position)
+        (self.currentStopOrdersInfo, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(self.client,
+                                                                                                                   self.position)
+        self.currentStopOrdersInfo: SubtotalBundle = self.currentStopOrdersInfo
         self.stopPrice: float = self.get_stop_quote()
 
     def _setup_tags(self, tags: List[str]) -> List[str]:
@@ -60,7 +62,7 @@ class StopLoss:
     def _is_order_restopable(self):
         if self.no_position:
             return False
-        if position_utils.get_abs_amt(self.position) != self.currentStopOds.executedQty:
+        if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.executedQty:
             return True
         if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOdAvgPrice,
                                                         self.dto.restopRate):
@@ -71,7 +73,7 @@ class StopLoss:
         ans = StopResult()
         if self._is_order_restopable():
             position_stop_utils.clean_old_orders(client=self.client, symbol=self.dto.get_symbol(),
-                                                 currentOds=self.currentStopOds)
+                                                 currentOds=self.currentStopOrdersInfo.orders)
             ans.orders = [self.post_order()]
             ans.active = True
         return ans
