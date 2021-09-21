@@ -11,8 +11,8 @@ from utils.order_utils import SubtotalBundle, OrderFilter
 
 class StopState(Enum):
     LOSS = 'LOSS'
-    GUARANTEED = 'GUARANTEED'
-    PROFIT = 'PROFIT'
+    GUARANTEED = 'GATE'
+    PROFIT = 'PROF'
 
 
 def clac_guard_price(p: Position, guard_balance: float) -> float:
