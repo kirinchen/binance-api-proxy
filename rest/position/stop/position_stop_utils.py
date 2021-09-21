@@ -69,14 +69,24 @@ class GuaranteedBundle:
         self.closeRate: float = closeRate
 
 
+def calc_guaranteed_price(pos: Position, closeRate: float) -> float:
+    gb = GuaranteedBundle(
+        amount=pos.positionAmt,
+        price=pos.entryPrice,
+        lever=pos.leverage,
+        closeRate=closeRate
+    )
+    return calc_guaranteed_long_price(gb) if pos.positionSide == PositionSide.LONG else calc_guaranteed_short_price(gb)
+
+
 def calc_guaranteed_long_price(i: GuaranteedBundle) -> float:
-    numerator = i.price * ( float(1) + (market_constant.MAKER_FEE * i.lever))
+    numerator = i.price * (float(1) + (market_constant.MAKER_FEE * i.lever))
     denominator = i.lever * i.closeRate * (float(1) - market_constant.TAKER_FEE)
     return (numerator / denominator) + i.price
 
 
 def calc_guaranteed_short_price(i: GuaranteedBundle) -> float:
     numerator = i.price * (float(1) + (market_constant.MAKER_FEE * i.lever) - (i.lever * i.closeRate) + (
-                i.lever * i.closeRate * market_constant.TAKER_FEE))
+            i.lever * i.closeRate * market_constant.TAKER_FEE))
     denominator = i.lever * i.closeRate * (float(1) - market_constant.TAKER_FEE)
     return - numerator / denominator
