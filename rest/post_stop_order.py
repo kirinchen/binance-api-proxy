@@ -35,15 +35,15 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str,
                     symbol: Symbol, stopPrice: float,
                     quantity: float) -> Order:
     positionSide = PositionSide.SHORT if stop_side == OrderSide.BUY else PositionSide.LONG
-    lastPrice = _get_last_price(client,symbol)
-
+    lastPrice = _get_last_price(client, symbol)
+    ordertype = _get_ordertype(orderSide=stop_side,lastPrice=lastPrice,stopPrice=stopPrice)
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
         side=stop_side,
         symbol=f'{symbol.symbol}USDT',
         timeInForce=TimeInForce.GTC,
-        ordertype=OrderType.TAKE_PROFIT_MARKET,
+        ordertype=ordertype,
         workingType=WorkingType.CONTRACT_PRICE,
         positionSide=positionSide,
         stopPrice=stopPrice,
@@ -53,9 +53,12 @@ def post_stop_order(client: RequestClient, tags: List[str], stop_side: str,
     return result
 
 
-def _get_ordertype(orderSide:OrderSide,lastPrice:float,stopPrice:float)->OrderType:
+def _get_ordertype(orderSide: str, lastPrice: float, stopPrice: float) -> OrderType:
     if orderSide == OrderSide.BUY:
-        return  OrderType.STOP_MARKET if lastPrice
+        return OrderType.STOP_MARKET if lastPrice > stopPrice else OrderType.TAKE_PROFIT_MARKET
+    else:
+        return OrderType.STOP_MARKET if lastPrice < stopPrice else OrderType.TAKE_PROFIT_MARKET
+
 
 def _get_last_price(client: RequestClient, symbol: Symbol) -> float:
     data = get_recent_trades_list.fetch(client=client, sbl=symbol, limit=10, timeMaped=False)
