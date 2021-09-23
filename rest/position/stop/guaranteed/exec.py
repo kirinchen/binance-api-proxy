@@ -11,5 +11,8 @@ def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     dto: StopGuaranteedDto = StopGuaranteedDto(**payload)
     stop_guaranteed: StopGuaranteed = StopGuaranteed(client, dto)
+    stop_guaranteed.load_vars()
+    cb = stop_guaranteed.is_conformable()
+    print(cb)
     result = stop_guaranteed.stop()
     return to_dict(result)

@@ -29,7 +29,7 @@ class StopGuaranteed(Stoper):
     def is_conformable(self) -> bool:
         if not super().is_conformable():
             return False
-        return True
+        return position_stop_utils.is_valid_stop_price(self.position, self.lastPrice, self.guaranteed_price)
 
     def stop(self) -> StopResult:
         ods = self.orderFinder.orders

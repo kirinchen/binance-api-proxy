@@ -90,3 +90,12 @@ def calc_guaranteed_short_price(i: GuaranteedBundle) -> float:
             i.lever * i.closeRate * market_constant.TAKER_FEE))
     denominator = i.lever * i.closeRate * (float(1) - market_constant.TAKER_FEE)
     return - numerator / denominator
+
+
+def is_valid_stop_price(position: Position, recent_price: float, stop_price: float) -> bool:
+    positionSide = position.positionSide
+    if positionSide == PositionSide.LONG:
+        return recent_price > stop_price
+    elif positionSide == PositionSide.SHORT:
+        return recent_price < stop_price
+    raise NotImplementedError('not support ' + str(positionSide))

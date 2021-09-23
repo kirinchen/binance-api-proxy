@@ -32,3 +32,8 @@ def fetch(client: RequestClient, sbl: Symbol, limit: int, timeMaped: bool = Fals
     result: List[Trade] = client.get_recent_trades_list(symbol=f'{sbl.symbol}USDT', limit=limit)
     ans = trade_utils.gen_subtotal_result(trade_utils.convert_traded_info(result), timeMaped)
     return ans
+
+
+def get_last_price(client: RequestClient, symbol: Symbol) -> float:
+    data = fetch(client=client, sbl=symbol, limit=10, timeMaped=False)
+    return data.all.lastPrice

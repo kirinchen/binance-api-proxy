@@ -5,7 +5,7 @@ from typing import List, TypeVar, Generic
 from binance_f import RequestClient
 from binance_f.model import Position, AccountInformation
 from market.Symbol import Symbol
-from rest import post_stop_take_order
+from rest import post_stop_take_order, get_recent_trades_list
 from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
@@ -49,7 +49,7 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         (self.currentStopOrdersInfo, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(
             self.client,
             self.position)
-        self.lastPrice: float = post_stop_take_order.get_last_price()
+        self.lastPrice: float = get_recent_trades_list.get_last_price(self.client, self.dto.get_symbol())
 
     def _setup_tags(self, tags: List[str]) -> List[str]:
         tags.append(self.state.value)
