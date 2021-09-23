@@ -24,6 +24,12 @@ class StopGuaranteed(Stoper):
             return
         self.stopPrice: float = position_stop_utils.calc_guaranteed_price(self.position, self.dto.closeRate)
         self.orderFinder: PositionOrderFinder = PositionOrderFinder(client=self.client, position=self.position)
+        self.guaranteed_price: float = position_stop_utils.calc_guaranteed_price(self.position, dto.closeRate)
+
+    def is_conformable(self) -> bool:
+        if not super().is_conformable():
+            return False
+        return True
 
     def stop(self) -> StopResult:
         ods = self.orderFinder.orders

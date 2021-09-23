@@ -5,6 +5,7 @@ from typing import List, TypeVar, Generic
 from binance_f import RequestClient
 from binance_f.model import Position, AccountInformation
 from market.Symbol import Symbol
+from rest import post_stop_take_order
 from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
@@ -15,7 +16,7 @@ from utils.position_utils import PositionFilter, filter_position
 
 class StopDto(metaclass=ABCMeta):
 
-    def __init__(self, symbol: str, positionSide: str,tags: List[str]):
+    def __init__(self, symbol: str, positionSide: str, tags: List[str]):
         self.symbol: str = symbol
         self.positionSide: str = positionSide
         self.tags: List[str] = tags
@@ -38,10 +39,17 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         self.tags = self._setup_tags(dto.tags)
         if self.no_position:
             return
+        self.currentStopOdAvgPrice: float = None
+        self.currentStopOrdersInfo: SubtotalBundle = None
+        self.lastPrice: float = None
+
+    def load_vars(self):
+        if self.no_position:
+            raise TypeError('no position')
         (self.currentStopOrdersInfo, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(
             self.client,
             self.position)
-        self.currentStopOrdersInfo: SubtotalBundle = self.currentStopOrdersInfo
+        self.lastPrice: float = post_stop_take_order.get_last_price()
 
     def _setup_tags(self, tags: List[str]) -> List[str]:
         tags.append(self.state.value)
@@ -55,6 +63,9 @@ class Stoper(Generic[T], metaclass=ABCMeta):
 
     def get_account(self) -> AccountInformation:
         return self.client.get_account_information()
+
+    def is_conformable(self) -> bool:
+        return not self.no_position
 
     @abc.abstractmethod
     def stop(self) -> StopResult:

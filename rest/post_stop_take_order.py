@@ -27,16 +27,16 @@ class Dto:
 def run(client: RequestClient, payload: dict):
     PayloadReqKey.clean_default_keys(payload)
     pl = Dto(**payload)
-    return post_stop_order(client=client, tags=pl.tags, stop_side=pl.stopSide, symbol=pl.get_symbol(),
-                           stopPrice=pl.stopPrice, quantity=pl.quantity).__dict__
+    return post_stop_take_order(client=client, tags=pl.tags, stop_side=pl.stopSide, symbol=pl.get_symbol(),
+                                stopPrice=pl.stopPrice, quantity=pl.quantity).__dict__
 
 
-def post_stop_order(client: RequestClient, tags: List[str], stop_side: str,
-                    symbol: Symbol, stopPrice: float,
-                    quantity: float) -> Order:
+def post_stop_take_order(client: RequestClient, tags: List[str], stop_side: str,
+                         symbol: Symbol, stopPrice: float,
+                         quantity: float, lastPrice: float = None) -> Order:
     positionSide = PositionSide.SHORT if stop_side == OrderSide.BUY else PositionSide.LONG
-    lastPrice = _get_last_price(client, symbol)
-    ordertype = _get_ordertype(orderSide=stop_side,lastPrice=lastPrice,stopPrice=stopPrice)
+    lastPrice = get_last_price(client, symbol) if lastPrice is None else lastPrice
+    ordertype = _get_ordertype(orderSide=stop_side, lastPrice=lastPrice, stopPrice=stopPrice)
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
     result = client.post_order(
@@ -60,6 +60,6 @@ def _get_ordertype(orderSide: str, lastPrice: float, stopPrice: float) -> OrderT
         return OrderType.STOP_MARKET if lastPrice < stopPrice else OrderType.TAKE_PROFIT_MARKET
 
 
-def _get_last_price(client: RequestClient, symbol: Symbol) -> float:
+def get_last_price(client: RequestClient, symbol: Symbol) -> float:
     data = get_recent_trades_list.fetch(client=client, sbl=symbol, limit=10, timeMaped=False)
     return data.all.lastPrice

@@ -23,6 +23,8 @@ class StopLossDto(StopDto):
 
 class StopLoss(Stoper):
 
+
+
     def __init__(self, client: RequestClient, dto: StopLossDto):
         super().__init__(client=client, state=StopState.LOSS, dto=dto)
 
@@ -50,6 +52,11 @@ class StopLoss(Stoper):
             ans.active = True
         return ans
 
+    def is_conformable(self) -> bool:
+        if not super().is_conformable():
+            return False
+        return True
+
     def post_order(self) -> Order:
         stopPrice: float = self._get_stop_quote()
         return post_order.post_stop_order(client=self.client
@@ -59,4 +66,5 @@ class StopLoss(Stoper):
                                           , symbol=self.dto.get_symbol()
                                           , quantity=position_utils.get_abs_amt(self.position)
                                           , stopPrice=stopPrice
+                                          ,
                                           )
