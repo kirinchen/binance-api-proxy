@@ -11,6 +11,7 @@ class PositionStopDto:
 
 class StopResult:
 
-    def __init__(self, orders: List[Order] = list(), active: bool = False):
+    def __init__(self, orders: List[Order] = list(), active: bool = False, noActiveMsg: str = None):
         self.active = active
         self.orders: List[Order] = orders
+        self.noActiveMsg: str = noActiveMsg

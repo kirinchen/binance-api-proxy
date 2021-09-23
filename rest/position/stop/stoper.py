@@ -78,3 +78,12 @@ class Stoper(Generic[T], metaclass=ABCMeta):
     @abc.abstractmethod
     def stop(self) -> StopResult:
         return NotImplemented
+
+    def run(self) -> StopResult:
+        if self.no_position:
+            return StopResult(noActiveMsg='no_position')
+        if not self.is_conformable():
+            return StopResult(noActiveMsg='not is_conformable')
+        if not self.is_up_to_date():
+            self.clean_old_orders()
+        return self.stop()
