@@ -3,7 +3,7 @@ from abc import ABCMeta
 from typing import List, TypeVar, Generic
 
 from binance_f import RequestClient
-from binance_f.model import Position, AccountInformation
+from binance_f.model import Position, AccountInformation, Order
 from market.Symbol import Symbol
 from rest import post_stop_take_order, get_recent_trades_list
 from rest.position.stop import position_stop_utils
@@ -66,6 +66,14 @@ class Stoper(Generic[T], metaclass=ABCMeta):
 
     def is_conformable(self) -> bool:
         return not self.no_position
+
+    @abc.abstractmethod
+    def is_up_to_date(self) -> bool:
+        return NotImplemented
+
+    @abc.abstractmethod
+    def clean_old_orders(self) -> List[Order]:
+        return NotImplemented
 
     @abc.abstractmethod
     def stop(self) -> StopResult:
