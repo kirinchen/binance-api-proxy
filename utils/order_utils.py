@@ -4,11 +4,15 @@ from typing import List, Dict, Any
 import dateutil.parser
 import pytz
 
-from binance_f.model import Order
+from binance_f.model import Order, OrderSide
 from binance_f import RequestClient
 from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
+
+
+def get_order_side_amt(od: Order) -> float:
+    return od.executedQty if od.side == OrderSide.BUY else - od.executedQty
 
 
 class OrderFilter:
@@ -21,9 +25,11 @@ class OrderFilter:
                  group: List[str] = list(),
                  updateStartAt: str = None,
                  updateEndAt: str = None,
-                 limit: int = None, **kwargs):
+                 limit: int = None,
+                 positionSide: str = None, **kwargs):
         self.symbol = symbol
         self.side = side
+        self.positionSide = positionSide
         self.tags = tags
         self.untags = untags
         self.excludeTags = excludeTags
@@ -118,6 +124,8 @@ def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
         if ft.notOrderType and ods.type == ft.notOrderType:
             continue
         if ft.side and ods.side != ft.side:
+            continue
+        if ft.positionSide and ods.positionSide != ft.positionSide:
             continue
         if ft.symbol and ft.get_symbole().gen_with_usdt() != ods.symbol:
             continue

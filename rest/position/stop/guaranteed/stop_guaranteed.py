@@ -2,17 +2,18 @@ from enum import Enum
 from typing import List
 
 from binance_f import RequestClient
+from rest.position.position_order_finder import PositionOrderFinder
 from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from rest.position.stop.stoper import StopDto, Stoper
+from utils.comm_utils import to_dict
 
 
 class StopGuaranteedDto(StopDto):
     def __init__(self, symbol: str, positionSide: str, closeRate: float, tags: List[str] = list()):
         super().__init__(symbol=symbol, positionSide=positionSide, tags=tags)
         self.closeRate: float = closeRate
-
 
 
 class StopGuaranteed(Stoper):
@@ -22,6 +23,8 @@ class StopGuaranteed(Stoper):
         if self.no_position:
             return
         self.stopPrice: float = position_stop_utils.calc_guaranteed_price(self.position, self.dto.closeRate)
+        self.orderFinder: PositionOrderFinder = PositionOrderFinder(client=self.client, position=self.position)
 
     def stop(self) -> StopResult:
-        return {}
+        ods = self.orderFinder.orders
+        return to_dict(ods)
