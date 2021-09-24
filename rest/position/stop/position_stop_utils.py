@@ -69,14 +69,14 @@ class GuaranteedBundle:
         self.closeRate: float = closeRate
 
 
-def calc_guaranteed_price(pos: Position, closeRate: float) -> float:
-    gb = GuaranteedBundle(
-        amount=pos.positionAmt,
-        price=pos.entryPrice,
-        lever=pos.leverage,
-        closeRate=closeRate
-    )
-    return calc_guaranteed_long_price(gb) if pos.positionSide == PositionSide.LONG else calc_guaranteed_short_price(gb)
+def calc_guaranteed_price(positionSide: str, gb: GuaranteedBundle) -> float:
+    # gb = GuaranteedBundle(
+    #     amount=pos.positionAmt,
+    #     price=pos.entryPrice,
+    #     lever=pos.leverage,
+    #     closeRate=closeRate
+    # )
+    return calc_guaranteed_long_price(gb) if positionSide == PositionSide.LONG else calc_guaranteed_short_price(gb)
 
 
 def calc_guaranteed_long_price(i: GuaranteedBundle) -> float:
@@ -99,3 +99,11 @@ def is_valid_stop_price(position: Position, recent_price: float, stop_price: flo
     elif positionSide == PositionSide.SHORT:
         return recent_price < stop_price
     raise NotImplementedError('not support ' + str(positionSide))
+
+
+def get_high_price(positionSide: str, a: float, b: float) -> float:
+    """
+    LONG : a = 100 , b = 50  -> a = 100
+    SHORT : a = 100 , b = 50  -> b = 50
+    """
+    TODO

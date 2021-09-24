@@ -49,6 +49,7 @@ class SubtotalBundle:
     def __init__(self, group: str = None):
         self.lastAt: datetime = None
         self.executedQty = 0
+        self.avgPrice = 0
         self.orders: List[Order] = list()
         self.group = group
         self.groupMap: Dict[str, SubtotalBundle] = dict()
@@ -59,10 +60,12 @@ class SubtotalBundle:
         self.orders.sort(key=lambda s: s.updateTime, reverse=True)
         ups = self.orders[0].updateTime / 1000
         self.lastAt = datetime.fromtimestamp(ups, pytz.utc)
+        sum_avg_price = 0
         for e in self.orders:
             e.updateAt = datetime.fromtimestamp(e.updateTime / 1000, pytz.utc).isoformat()
             self.executedQty += e.executedQty
-
+            sum_avg_price += e.executedQty * e.avgPrice
+        self.avgPrice = sum_avg_price / self.executedQty
         if self.group:
             self.groupMap = self._group_by()
 

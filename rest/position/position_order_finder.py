@@ -1,12 +1,19 @@
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import Position, Order
+from binance_f.model import Position, Order, OrderType
 from market.Symbol import Symbol
 from market.enums import OrderStatus
 from rest.position.stop import position_stop_utils
 from utils import order_utils
 from utils.order_utils import OrderFilter, SubtotalBundle
+
+
+class OrderBuildLeave:
+
+    def __init__(self):
+        self.build: SubtotalBundle = SubtotalBundle()
+        self.leave: SubtotalBundle = SubtotalBundle()
 
 
 class PositionOrderFinder:
@@ -31,3 +38,14 @@ class PositionOrderFinder:
                 return ans
 
         raise TypeError('over scan all the orders' + str(self.position))
+
+    def get_build_order_info(self) -> OrderBuildLeave:
+        ans = OrderBuildLeave()
+        for od in self.orders:
+            if od.type == OrderType.LIMIT:
+                ans.build.orders.append(od)
+            else:
+                ans.leave.orders.append(od)
+        ans.build.subtotal()
+        ans.leave.subtotal()
+        return ans
