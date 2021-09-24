@@ -106,4 +106,8 @@ def get_high_price(positionSide: str, a: float, b: float) -> float:
     LONG : a = 100 , b = 50  -> a = 100
     SHORT : a = 100 , b = 50  -> b = 50
     """
-    TODO
+    if positionSide == PositionSide.LONG:
+        return max(a, b)
+    elif positionSide == PositionSide.SHORT:
+        return min(a, b)
+    raise NotImplementedError('not support ' + str(positionSide))
