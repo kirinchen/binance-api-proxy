@@ -23,8 +23,6 @@ class StopLossDto(StopDto):
 
 class StopLoss(Stoper):
 
-
-
     def __init__(self, client: RequestClient, dto: StopLossDto):
         super().__init__(client=client, state=StopState.LOSS, dto=dto)
 
