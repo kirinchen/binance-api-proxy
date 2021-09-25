@@ -39,14 +39,13 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         self.tags = self._setup_tags(dto.tags)
         if self.no_position:
             return
-        self.currentStopOdAvgPrice: float = None
         self.currentStopOrdersInfo: SubtotalBundle = None
         self.lastPrice: float = None
 
     def load_vars(self):
         if self.no_position:
             raise TypeError('no position')
-        (self.currentStopOrdersInfo, self.currentStopOdAvgPrice) = position_stop_utils.get_current_new_stop_orders(
+        self.currentStopOrdersInfo, = position_stop_utils.get_current_new_stop_orders(
             self.client,
             self.position)
         self.lastPrice: float = get_recent_trades_list.get_last_price(self.client, self.dto.get_symbol())
@@ -65,6 +64,9 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         return self.client.get_account_information()
 
     def is_conformable(self) -> bool:
+        """
+        表示有達到該 range 的進入門檻
+        """
         return not self.no_position
 
     @abc.abstractmethod
@@ -84,6 +86,7 @@ class Stoper(Generic[T], metaclass=ABCMeta):
             return StopResult(noActiveMsg='no_position')
         if not self.is_conformable():
             return StopResult(noActiveMsg='not is_conformable')
-        if not self.is_up_to_date():
-            self.clean_old_orders()
+        if self.is_up_to_date():
+            return StopResult(noActiveMsg='is_up_to_date')
+        self.clean_old_orders()
         return self.stop()

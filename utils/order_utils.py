@@ -46,11 +46,11 @@ class OrderFilter:
 
 
 class SubtotalBundle:
-    def __init__(self, group: str = None):
+    def __init__(self, group: str = None, orders: List[Order] = list()):
         self.lastAt: datetime = None
         self.origQty = 0
         self.avgPrice = 0
-        self.orders: List[Order] = list()
+        self.orders: List[Order] = orders
         self.group = group
         self.groupMap: Dict[str, SubtotalBundle] = dict()
 

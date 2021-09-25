@@ -36,7 +36,7 @@ class StopLoss(Stoper[StopDto]):
             return False
         if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.origQty:
             return True
-        if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOdAvgPrice,
+        if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOrdersInfo.avgPrice,
                                                         self.dto.restopRate):
             return True
         return False
