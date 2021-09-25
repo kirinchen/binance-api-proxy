@@ -48,7 +48,7 @@ class OrderFilter:
 class SubtotalBundle:
     def __init__(self, group: str = None):
         self.lastAt: datetime = None
-        self.executedQty = 0
+        self.origQty = 0
         self.avgPrice = 0
         self.orders: List[Order] = list()
         self.group = group
@@ -63,9 +63,9 @@ class SubtotalBundle:
         sum_avg_price = 0
         for e in self.orders:
             e.updateAt = datetime.fromtimestamp(e.updateTime / 1000, pytz.utc).isoformat()
-            self.executedQty += e.executedQty
-            sum_avg_price += e.executedQty * e.avgPrice
-        self.avgPrice = sum_avg_price / self.executedQty
+            self.origQty += e.origQty
+            sum_avg_price += e.origQty * get_price(e)
+        self.avgPrice = sum_avg_price / self.origQty
         if self.group:
             self.groupMap = self._group_by()
 
@@ -81,17 +81,19 @@ class SubtotalBundle:
         return ans
 
     def to_struct(self):
-        ans = {
-            'lastAt': self.lastAt.isoformat() if self.lastAt else None,
-            'executedQty': self.executedQty
-        }
-        if self.group:
-            ans['group'] = self.group
-            ans['groupMap'] = dict()
-            for k, v in self.groupMap.items():
-                ans['groupMap'][k] = v.to_struct()
-        else:
-            ans['orders'] = [o.__dict__ for o in self.orders]
+        # ans = {
+        #     'lastAt': self.lastAt.isoformat() if self.lastAt else None,
+        #     'executedQty': self.origQty
+        # }
+        # if self.group:
+        #     ans['group'] = self.group
+        #     ans['groupMap'] = dict()
+        #     for k, v in self.groupMap.items():
+        #         ans['groupMap'][k] = v.to_struct()
+        # else:
+        #     ans['orders'] = [o.__dict__ for o in self.orders]
+        ans = comm_utils.to_dict(self)
+        ans['lastAt'] = self.lastAt.isoformat() if self.lastAt else None
         return ans
 
 
@@ -154,3 +156,13 @@ def sum_amt(ods: List[Order]) -> float:
     for od in ods:
         ans += od.origQty
     return ans
+
+
+def get_price(od: Order) -> float:
+    if od.avgPrice > 0:
+        return od.avgPrice
+    if od.price > 0:
+        return od.price
+    if od.stopPrice > 0:
+        return od.stopPrice
+    raise NotImplementedError(f'the {od} not support any price')

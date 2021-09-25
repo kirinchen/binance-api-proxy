@@ -27,7 +27,7 @@ def get_stop_order_side(positionSide: str) -> str:
     raise NotImplementedError(f'not support {positionSide}')
 
 
-def get_current_new_stop_orders(client: RequestClient, p: Position) -> (SubtotalBundle, float):
+def get_current_new_stop_orders(client: RequestClient, p: Position) -> SubtotalBundle:
     symbol: Symbol = Symbol.get_with_usdt(p.symbol)
     stop_order_side: str = get_stop_order_side(p.positionSide)
     of = OrderFilter(symbol=symbol.symbol,
@@ -35,15 +35,7 @@ def get_current_new_stop_orders(client: RequestClient, p: Position) -> (Subtotal
                      status='NEW',
                      side=stop_order_side
                      )
-    ans = order_utils.fetch_order(client, of)
-    if ans.executedQty <= 0:
-        return ans, 0
-    sump = 0
-
-    for o in ans.orders:
-        sump += o.executedQty * o.stopPrice
-    avgp = sump / ans.executedQty
-    return ans, avgp
+    return order_utils.fetch_order(client, of)
 
 
 def is_difference_over_range(source: float, target: float, rate: float):

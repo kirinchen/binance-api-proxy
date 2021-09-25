@@ -39,7 +39,7 @@ class PositionOrderFinder:
 
         raise TypeError('over scan all the orders' + str(self.position))
 
-    def get_build_order_info(self) -> OrderBuildLeave:
+    def get_build_leave_order_info(self) -> OrderBuildLeave:
         ans = OrderBuildLeave()
         for od in self.orders:
             if od.type == OrderType.LIMIT:

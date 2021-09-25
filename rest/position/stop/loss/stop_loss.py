@@ -21,7 +21,7 @@ class StopLossDto(StopDto):
         self.restopRate: float = restopRate
 
 
-class StopLoss(Stoper):
+class StopLoss(Stoper[StopDto]):
 
     def __init__(self, client: RequestClient, dto: StopLossDto):
         super().__init__(client=client, state=StopState.LOSS, dto=dto)
@@ -34,7 +34,7 @@ class StopLoss(Stoper):
     def _is_order_restopable(self):
         if self.no_position:
             return False
-        if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.executedQty:
+        if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.origQty:
             return True
         if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOdAvgPrice,
                                                         self.dto.restopRate):
