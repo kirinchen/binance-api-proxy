@@ -39,6 +39,10 @@ def get_current_new_stop_orders(client: RequestClient, p: Position) -> SubtotalB
 
 
 def is_difference_over_range(source: float, target: float, rate: float):
+    if source == 0 and target == 0:
+        return False
+    if source == 0 or target == 0:
+        return True
     r: float = abs(1 - (target / source))
     return r > rate
 

@@ -45,7 +45,7 @@ class Stoper(Generic[T], metaclass=ABCMeta):
     def load_vars(self):
         if self.no_position:
             raise TypeError('no position')
-        self.currentStopOrdersInfo, = position_stop_utils.get_current_new_stop_orders(
+        self.currentStopOrdersInfo = position_stop_utils.get_current_new_stop_orders(
             self.client,
             self.position)
         self.lastPrice: float = get_recent_trades_list.get_last_price(self.client, self.dto.get_symbol())

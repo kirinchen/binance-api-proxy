@@ -46,8 +46,8 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         self.stopPrice: float = self._calc_stop_price()
         self.guaranteed_price: float = position_stop_utils.calc_guaranteed_price(self.position.positionSide,
                                                                                  self._gen_guaranteed_bundle())
-        self.guaranteed_amt: float = self.buildLeaveOrderInfo.build * self.dto.closeRate
-        self.orderHandleBundle = type_order.gen_type_order_handle()
+        self.guaranteed_amt: float = self.buildLeaveOrderInfo.build.origQty * self.dto.closeRate
+        self.orderHandleBundle = type_order.gen_type_order_handle(**self.__dict__)
 
     def is_conformable(self) -> bool:
         if not super().is_conformable():
@@ -77,5 +77,4 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         guard_balance = (build.avgPrice * build.origQty) / self.position.leverage
         return position_stop_utils.clac_guard_price(self.position, guard_balance)
 
-    def _is_match_stop(self) -> bool:
-        return True
+

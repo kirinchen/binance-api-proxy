@@ -46,12 +46,12 @@ class OrderFilter:
 
 
 class SubtotalBundle:
-    def __init__(self, group: str = None, orders: List[Order] = list()):
+    def __init__(self, orders: List[Order], group: str):
         self.lastAt: datetime = None
         self.origQty = 0
         self.avgPrice = 0
         self.orders: List[Order] = orders
-        self.group = group
+        self.group: str = group
         self.groupMap: Dict[str, SubtotalBundle] = dict()
 
     def subtotal(self):
@@ -73,7 +73,7 @@ class SubtotalBundle:
         ans: Dict[str, SubtotalBundle] = dict()
         for od in self.orders:
             groupv = getattr(od, self.group)
-            g_sub_bundle = ans.get(groupv, SubtotalBundle())
+            g_sub_bundle = ans.get(groupv, SubtotalBundle(group=None,orders=list()))
             g_sub_bundle.orders.append(od)
             ans[groupv] = g_sub_bundle
         for k, v in ans.items():
@@ -122,7 +122,7 @@ def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
 
 
 def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
-    ans = SubtotalBundle(ft.group[0] if ft.group else None)
+    ans = SubtotalBundle(group=ft.group[0] if ft.group else None, orders=list())
     for ods in oods:
         if ft.orderType and ods.type != ft.orderType:
             continue

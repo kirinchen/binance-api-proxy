@@ -2,6 +2,7 @@ from typing import List
 
 from binance_f import RequestClient
 from binance_f.model import Position, Order, OrderType
+from infr import constant
 from market.Symbol import Symbol
 from market.enums import OrderStatus
 from rest.position.stop import position_stop_utils
@@ -12,8 +13,8 @@ from utils.order_utils import OrderFilter, SubtotalBundle
 class OrderBuildLeave:
 
     def __init__(self):
-        self.build: SubtotalBundle = SubtotalBundle()
-        self.leave: SubtotalBundle = SubtotalBundle()
+        self.build: SubtotalBundle = SubtotalBundle(group=None,orders=list())
+        self.leave: SubtotalBundle = SubtotalBundle(group=None,orders=list())
 
 
 class PositionOrderFinder:
@@ -34,7 +35,7 @@ class PositionOrderFinder:
         for od in all_orders.orders:
             sum_amt += order_utils.get_order_side_amt(od)
             ans.append(od)
-            if not position_stop_utils.is_difference_over_range(sum_amt, self.position.positionAmt, 0.0001):
+            if not position_stop_utils.is_difference_over_range(sum_amt, self.position.positionAmt, constant.LIMIT_0_RATE):
                 return ans
 
         raise TypeError('over scan all the orders' + str(self.position))

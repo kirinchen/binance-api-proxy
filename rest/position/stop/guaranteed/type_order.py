@@ -13,12 +13,6 @@ from utils.order_utils import SubtotalBundle, OrderFilter
 GUARANTEED_ORDER_TAG = 'gntop'
 
 
-class BaseType(Enum):
-    IDLE = 'IDLE'  # no any Filled or new stop order
-    CORRECT = 'CORRECT'  # just amt / price is ok and no new order
-    CHAOS = 'CHAOS'  # 現在的 order 就是不對
-
-
 class TypeOrderHandle(metaclass=ABCMeta):
 
     def __init__(self):
@@ -87,10 +81,33 @@ class GuaranteedOrderHandle(TypeOrderHandle):
         return state == GuaranteedState.DONE
 
 
+class BaseState(Enum):
+    IDLE = 'IDLE'  # no any Filled or new stop order
+    DONE = 'DONE'  # just amt / price is ok and no new order
+    CHAOS = 'CHAOS'  # 現在的 order 就是不對
+
+
 class BaseOrderHandle(TypeOrderHandle):
 
     def __init__(self):
         super(BaseOrderHandle, self).__init__()
+        self.currentStopOrderInfo: SubtotalBundle = None
+
+    def init_vars(self):
+        self.currentStopOrderInfo: SubtotalBundle = SubtotalBundle(orders=self.currentOrders,group=None)
+        self.currentStopOrderInfo.subtotal()
+
+    def get_state(self) -> BaseState:
+        if self.currentStopOrderInfo.origQty <= 0:
+            return BaseState.IDLE
+        return BaseState.CHAOS if position_stop_utils.is_difference_over_range(
+            self.currentStopOrderInfo.origQty,
+            self.guaranteed_amt,
+            constant.LIMIT_0_RATE) else BaseState.DONE
+
+    def is_up_to_date(self) -> bool:
+        state = self.get_state()
+        return state == BaseState.DONE
 
 
 class HandleBundle:
@@ -104,7 +121,7 @@ def gen_type_order_handle(position: Position,
                           currentStopOrdersInfo: SubtotalBundle,
                           buildLeaveOrderInfo: OrderBuildLeave,
                           guaranteed_price: float,
-                          guaranteed_amt: float) -> HandleBundle:
+                          guaranteed_amt: float, **kwargs) -> HandleBundle:
     base = BaseOrderHandle()
     guaranteed = GuaranteedOrderHandle(guaranteed_price=guaranteed_price, guaranteed_amt=guaranteed_amt)
     for od in currentStopOrdersInfo.orders:
