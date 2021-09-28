@@ -4,6 +4,7 @@ from binance_f import RequestClient
 from rest.position.stop.dto import StopResult
 from rest.position.stop.guaranteed.stop_guaranteed import StopGuaranteedDto, StopGuaranteed
 from rest.position.stop.loss.stop_loss import StopLossDto, StopLoss
+from rest.position.stop.position_stop_utils import StopState
 from rest.position.stop.stoper import Stoper
 
 
@@ -36,7 +37,7 @@ class StopMediation:
 
     def stop(self) -> List[StopResult]:
         if self.stopGuaranteed.no_position:
-            return [StopResult(noActiveMsg='no_position')]
+            return [StopResult(stopState=StopState.NO_POS, noActiveMsg='no_position')]
         return self._stop_each([self.stopGuaranteed, self.stopLoss])
 
     def _stop_each(self, stops: List[Stoper]) -> List[StopResult]:

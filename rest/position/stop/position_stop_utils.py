@@ -11,6 +11,7 @@ from utils.order_utils import OrdersInfo, OrderFilter
 
 
 class StopState(Enum):
+    NO_POS = 'NO_POS'
     LOSS = 'LOSS'
     GUARANTEED = 'GATE'
     PROFIT = 'PROF'
