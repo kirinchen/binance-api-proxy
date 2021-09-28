@@ -3,7 +3,7 @@ from typing import List, Dict
 from binance_f import RequestClient
 from binance_f.constant.test import *
 from binance_f.base.printobject import *
-from binance_f.model import Trade
+from binance_f.model import Trade, OrderSide
 from market.Symbol import Symbol
 from rest.poxy_controller import PayloadReqKey
 
@@ -37,3 +37,5 @@ def fetch(client: RequestClient, sbl: Symbol, limit: int, timeMaped: bool = Fals
 def get_last_price(client: RequestClient, symbol: Symbol) -> float:
     data = fetch(client=client, sbl=symbol, limit=10, timeMaped=False)
     return data.all.lastPrice
+
+

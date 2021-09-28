@@ -5,7 +5,7 @@ from binance_f import RequestClient
 from binance_f.model import OrderSide, PositionSide, Position, OrderType, Order, TimeInForce, WorkingType
 from market import market_constant
 from market.Symbol import Symbol
-from utils import order_utils, comm_utils
+from utils import order_utils, comm_utils, direction_utils
 from utils.comm_utils import fix_precision
 from utils.order_utils import OrdersInfo, OrderFilter
 
@@ -20,17 +20,9 @@ def clac_guard_price(p: Position, guard_balance: float) -> float:
     return -(guard_balance / p.positionAmt) + p.entryPrice
 
 
-def get_stop_order_side(positionSide: str) -> str:
-    if positionSide == PositionSide.SHORT:
-        return OrderSide.BUY
-    if positionSide == PositionSide.LONG:
-        return OrderSide.SELL
-    raise NotImplementedError(f'not support {positionSide}')
-
-
 def get_current_new_stop_take_orders(client: RequestClient, p: Position) -> OrdersInfo:
     symbol: Symbol = Symbol.get_with_usdt(p.symbol)
-    stop_order_side: str = get_stop_order_side(p.positionSide)
+    stop_order_side: str = direction_utils.get_stop_order_side(p.positionSide)
     of = OrderFilter(symbol=symbol.symbol,
                      status='NEW',
                      side=stop_order_side
@@ -48,7 +40,7 @@ def get_current_new_stop_take_orders(client: RequestClient, p: Position) -> Orde
 
 def get_current_new_stop_orders(client: RequestClient, p: Position) -> OrdersInfo:
     symbol: Symbol = Symbol.get_with_usdt(p.symbol)
-    stop_order_side: str = get_stop_order_side(p.positionSide)
+    stop_order_side: str = direction_utils.get_stop_order_side(p.positionSide)
     of = OrderFilter(symbol=symbol.symbol,
                      orderType=OrderType.STOP_MARKET,
                      status='NEW',
@@ -109,29 +101,13 @@ def calc_guaranteed_short_price(i: GuaranteedBundle) -> float:
 
 def is_valid_stop_price(position: Position, recent_price: float, stop_price: float) -> bool:
     positionSide = position.positionSide
-    if positionSide == PositionSide.LONG:
-        return recent_price > stop_price
-    elif positionSide == PositionSide.SHORT:
-        return recent_price < stop_price
-    raise NotImplementedError('not support ' + str(positionSide))
-
-
-def get_high_price(positionSide: str, a: float, b: float) -> float:
-    """
-    LONG : a = 100 , b = 50  -> a = 100
-    SHORT : a = 100 , b = 50  -> b = 50
-    """
-    if positionSide == PositionSide.LONG:
-        return max(a, b)
-    elif positionSide == PositionSide.SHORT:
-        return min(a, b)
-    raise NotImplementedError('not support ' + str(positionSide))
+    return direction_utils.is_valid_stop_price(positionSide, recent_price, stop_price)
 
 
 def post_stop_order(client: RequestClient, tags: List[str], position: Position, stopPrice: float,
                     quantity: float) -> Order:
     positionSide = position.positionSide
-    stop_side = get_stop_order_side(positionSide)
+    stop_side = direction_utils.get_stop_order_side(positionSide)
     symbol: Symbol = Symbol.get_with_usdt(position.symbol)
     stopPrice = fix_precision(symbol.precision_price, stopPrice)
     quantity = fix_precision(symbol.precision_amount, quantity)
