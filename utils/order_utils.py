@@ -45,14 +45,14 @@ class OrderFilter:
         return Symbol.get(self.symbol)
 
 
-class SubtotalBundle:
+class OrdersInfo:
     def __init__(self, orders: List[Order], group: str):
         self.lastAt: datetime = None
         self.origQty = 0
         self.avgPrice = 0
         self.orders: List[Order] = orders
         self.group: str = group
-        self.groupMap: Dict[str, SubtotalBundle] = dict()
+        self.groupMap: Dict[str, OrdersInfo] = dict()
 
     def subtotal(self):
         if len(self.orders) <= 0:
@@ -70,10 +70,10 @@ class SubtotalBundle:
             self.groupMap = self._group_by()
 
     def _group_by(self, ) -> Dict[str, object]:
-        ans: Dict[str, SubtotalBundle] = dict()
+        ans: Dict[str, OrdersInfo] = dict()
         for od in self.orders:
             groupv = getattr(od, self.group)
-            g_sub_bundle = ans.get(groupv, SubtotalBundle(group=None,orders=list()))
+            g_sub_bundle = ans.get(groupv, OrdersInfo(group=None, orders=list()))
             g_sub_bundle.orders.append(od)
             ans[groupv] = g_sub_bundle
         for k, v in ans.items():
@@ -99,7 +99,7 @@ class SubtotalBundle:
 
 class StatusMap:
     def __init__(self):
-        self.map: Dict[str, SubtotalBundle] = dict()
+        self.map: Dict[str, OrdersInfo] = dict()
 
     def to_struct(self):
         ans = {}
@@ -108,7 +108,7 @@ class StatusMap:
         return ans
 
 
-def fetch_order(client: RequestClient, pl: OrderFilter) -> SubtotalBundle:
+def fetch_order(client: RequestClient, pl: OrderFilter) -> OrdersInfo:
     oods: List[Order] = client.get_all_orders(symbol=pl.get_symbole().gen_with_usdt(), limit=pl.limit,
                                               startTime=pl.updateStartTime, endTime=pl.updateEndTime)
     return filter_order(oods, pl)
@@ -121,8 +121,8 @@ def filter_order_by_payload(oods: List[Order], payload: dict) -> Any:
     return result.to_struct()
 
 
-def filter_order(oods: List[Order], ft: OrderFilter) -> SubtotalBundle:
-    ans = SubtotalBundle(group=ft.group[0] if ft.group else None, orders=list())
+def filter_order(oods: List[Order], ft: OrderFilter) -> OrdersInfo:
+    ans = OrdersInfo(group=ft.group[0] if ft.group else None, orders=list())
     for ods in oods:
         if ft.orderType and ods.type != ft.orderType:
             continue
@@ -166,3 +166,14 @@ def get_price(od: Order) -> float:
     if od.stopPrice > 0:
         return od.stopPrice
     raise NotImplementedError(f'the {od} not support any price')
+
+
+def combined_order_info(a: OrdersInfo, b: OrdersInfo) -> OrdersInfo:
+    com_ods: List[Order] = list()
+    com_ods.extend(a.orders)
+    com_ods.extend(b.orders)
+    ans: OrdersInfo = OrdersInfo(
+        orders=com_ods, group=None
+    )
+    ans.subtotal()
+    return ans

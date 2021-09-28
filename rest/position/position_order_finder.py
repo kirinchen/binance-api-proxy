@@ -7,14 +7,14 @@ from market.Symbol import Symbol
 from market.enums import OrderStatus
 from rest.position.stop import position_stop_utils
 from utils import order_utils
-from utils.order_utils import OrderFilter, SubtotalBundle
+from utils.order_utils import OrderFilter, OrdersInfo
 
 
 class OrderBuildLeave:
 
     def __init__(self):
-        self.build: SubtotalBundle = SubtotalBundle(group=None,orders=list())
-        self.leave: SubtotalBundle = SubtotalBundle(group=None,orders=list())
+        self.build: OrdersInfo = OrdersInfo(group=None, orders=list())
+        self.leave: OrdersInfo = OrdersInfo(group=None, orders=list())
 
 
 class PositionOrderFinder:

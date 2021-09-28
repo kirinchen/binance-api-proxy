@@ -7,7 +7,7 @@ from market.Symbol import Symbol
 from rest import get_recent_trades_list
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
-from utils.comm_utils import get_order_cid, gen_group_uid
+from utils.comm_utils import get_order_cid, gen_group_uid, fix_precision
 
 
 class PostOrderDto:
@@ -24,10 +24,7 @@ class PostOrderDto:
         self.currentMove = currentMove
 
 
-def fix_precision(p: int, fv: float):
-    fstr = str(p) + 'f'
-    ans = float(('{:.' + fstr + '}').format(fv))
-    return str(ans)
+
 
 
 def calc_quote(client: RequestClient, pl: PostOrderDto) -> float:
@@ -116,8 +113,6 @@ def post_order(client: RequestClient, pl: PostOrderDto):
         "stopPrice": max_stop,
         "quantity": quantity
     }
-
-
 
 
 def post_stop_order(client: RequestClient, tags: List[str], stop_side: str,

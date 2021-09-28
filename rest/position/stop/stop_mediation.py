@@ -44,9 +44,8 @@ class StopMediation:
         for stop in stops:
             stop.load_vars()
             stop_result: StopResult = stop.run()
+            no_stop_results.append(stop_result)
             if stop_result.active:
-                return [stop_result]
-            else:
-                no_stop_results.append(stop_result)
+                break
 
         return no_stop_results

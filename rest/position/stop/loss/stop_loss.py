@@ -9,7 +9,7 @@ from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from rest.position.stop.stoper import StopDto, Stoper
 from utils import position_utils
-from utils.order_utils import SubtotalBundle
+from utils.order_utils import OrdersInfo
 from utils.position_utils import PositionFilter, filter_position
 
 
@@ -25,29 +25,32 @@ class StopLoss(Stoper[StopDto]):
 
     def __init__(self, client: RequestClient, dto: StopLossDto):
         super().__init__(client=client, state=StopState.LOSS, dto=dto)
+        self.stopPrice: float = None
+
+    def load_vars(self):
+        super(StopLoss, self).load_vars()
+        self.stopPrice = self._get_stop_quote()
 
     def _get_stop_quote(self):
         amount = self.get_account().maxWithdrawAmount
         guard_amt = amount * self.dto.balanceRate
         return position_stop_utils.clac_guard_price(self.position, guard_amt)
 
-    def _is_order_restopable(self):
-        if self.no_position:
-            return False
+    def is_up_to_date(self) -> bool:
         if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.origQty:
-            return True
-        if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOrdersInfo.avgPrice,
-                                                        self.dto.restopRate):
-            return True
-        return False
+            return False
+        return not position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOrdersInfo.avgPrice,
+                                                                self.dto.restopRate)
+
+    def clean_old_orders(self) -> List[Order]:
+        position_stop_utils.clean_old_orders(client=self.client, symbol=Symbol.get_with_usdt(self.position.symbol),
+                                             currentOds=self.currentStopOrdersInfo.orders)
+        return self.currentStopOrdersInfo.orders
 
     def stop(self) -> StopResult:
-        ans = StopResult()
-        if self._is_order_restopable():
-            position_stop_utils.clean_old_orders(client=self.client, symbol=self.dto.get_symbol(),
-                                                 currentOds=self.currentStopOrdersInfo.orders)
-            ans.orders = [self.post_order()]
-            ans.active = True
+        ans = StopResult(stopState=self.state)
+        ans.orders = [self.post_order()]
+        ans.active = True
         return ans
 
     def is_conformable(self) -> bool:
@@ -56,13 +59,6 @@ class StopLoss(Stoper[StopDto]):
         return True
 
     def post_order(self) -> Order:
-        stopPrice: float = self._get_stop_quote()
-        return post_order.post_stop_order(client=self.client
-                                          , tags=self.tags
-                                          ,
-                                          stop_side=position_stop_utils.get_stop_order_side(self.position.positionSide)
-                                          , symbol=self.dto.get_symbol()
-                                          , quantity=position_utils.get_abs_amt(self.position)
-                                          , stopPrice=stopPrice
-                                          ,
-                                          )
+        return position_stop_utils.post_stop_order(client=self.client, tags=self.tags, position=self.position,
+                                                   stopPrice=self.stopPrice,
+                                                   quantity=position_utils.get_abs_amt(self.position))

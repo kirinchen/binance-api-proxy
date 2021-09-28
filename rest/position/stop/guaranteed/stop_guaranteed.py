@@ -10,8 +10,9 @@ from rest.position.stop.dto import StopResult
 from rest.position.stop.guaranteed import type_order
 from rest.position.stop.position_stop_utils import StopState, GuaranteedBundle
 from rest.position.stop.stoper import StopDto, Stoper
+from utils import position_utils
 from utils.comm_utils import to_dict
-from utils.order_utils import SubtotalBundle
+from utils.order_utils import OrdersInfo
 
 
 class StopOrder:
@@ -32,6 +33,7 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
     def __init__(self, client: RequestClient, dto: StopGuaranteedDto):
         super().__init__(client=client, state=StopState.GUARANTEED, dto=dto)
         self.stopPrice: float = None
+        self.stopAmt: float = None
         self.orderedFinder: PositionOrderFinder = None
         self.guaranteed_price: float = None
         self.guaranteed_amt: float = None
@@ -47,22 +49,38 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         self.guaranteed_price: float = position_stop_utils.calc_guaranteed_price(self.position.positionSide,
                                                                                  self._gen_guaranteed_bundle())
         self.guaranteed_amt: float = self.buildLeaveOrderInfo.build.origQty * self.dto.closeRate
+        self.stopAmt: float = position_utils.get_abs_amt(self.position) - self.guaranteed_amt
         self.orderHandleBundle = type_order.gen_type_order_handle(**self.__dict__)
 
     def is_conformable(self) -> bool:
         if not super().is_conformable():
             return False
+        if not position_stop_utils.is_difference_over_range(self.lastPrice, self.guaranteed_price, 0.0001):
+            return False
         return position_stop_utils.is_valid_stop_price(self.position, self.lastPrice, self.guaranteed_price)
 
     def stop(self) -> StopResult:
-        ods = self.orderedFinder.orders
-        return to_dict(ods)
+        ods: List[Order] = list()
+        if not self.orderHandleBundle.guaranteed.is_up_to_date():
+            ods.extend(self.orderHandleBundle.guaranteed.post_order(client=self.client, tags=self.tags))
+        if not self.orderHandleBundle.base.is_up_to_date():
+            ods.extend(self.orderHandleBundle.base.post_order(client=self.client, tags=self.tags))
+        return StopResult(orders=ods, active=True,stopState=self.state)
 
     def is_up_to_date(self) -> bool:
-        pass
+        if not self.orderHandleBundle.guaranteed.is_up_to_date():
+            return False
+        if not self.orderHandleBundle.base.is_up_to_date():
+            return False
+        return True
 
     def clean_old_orders(self) -> List[Order]:
-        pass
+        ans: List[Order] = list()
+        if not self.orderHandleBundle.guaranteed.is_up_to_date():
+            ans.extend(self.orderHandleBundle.guaranteed.clean_old_orders(client=self.client))
+        if not self.orderHandleBundle.base.is_up_to_date():
+            ans.extend(self.orderHandleBundle.base.clean_old_orders(client=self.client))
+        return ans
 
     def _gen_guaranteed_bundle(self) -> GuaranteedBundle:
         return GuaranteedBundle(
@@ -73,8 +91,6 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         )
 
     def _calc_stop_price(self) -> float:
-        build: SubtotalBundle = self.buildLeaveOrderInfo.build
+        build: OrdersInfo = self.buildLeaveOrderInfo.build
         guard_balance = (build.avgPrice * build.origQty) / self.position.leverage
         return position_stop_utils.clac_guard_price(self.position, guard_balance)
-
-

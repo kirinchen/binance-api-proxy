@@ -59,6 +59,10 @@ def gen_group_uid() -> str:
     uid = random_chars(3)
     return f'_G{uid}_'
 
+def fix_precision(p: int, fv: float):
+    fstr = str(p) + 'f'
+    ans = float(('{:.' + fstr + '}').format(fv))
+    return str(ans)
 
 def to_dict(obj, classkey=None) -> dict:
     if isinstance(obj, dict):

@@ -10,7 +10,7 @@ from rest.position.stop import position_stop_utils
 from rest.position.stop.dto import StopResult
 from rest.position.stop.position_stop_utils import StopState
 from utils import position_utils
-from utils.order_utils import SubtotalBundle
+from utils.order_utils import OrdersInfo
 from utils.position_utils import PositionFilter, filter_position
 
 
@@ -39,7 +39,7 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         self.tags = self._setup_tags(dto.tags)
         if self.no_position:
             return
-        self.currentStopOrdersInfo: SubtotalBundle = None
+        self.currentStopOrdersInfo: OrdersInfo = None
         self.lastPrice: float = None
 
     def load_vars(self):
@@ -83,10 +83,10 @@ class Stoper(Generic[T], metaclass=ABCMeta):
 
     def run(self) -> StopResult:
         if self.no_position:
-            return StopResult(noActiveMsg='no_position')
+            return StopResult(stopState=self.state,noActiveMsg='no_position')
         if not self.is_conformable():
-            return StopResult(noActiveMsg='not is_conformable')
+            return StopResult(stopState=self.state,noActiveMsg='not is_conformable')
         if self.is_up_to_date():
-            return StopResult(noActiveMsg='is_up_to_date')
+            return StopResult(stopState=self.state,active=True, up_to_date=True)
         self.clean_old_orders()
         return self.stop()

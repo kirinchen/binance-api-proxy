@@ -2,11 +2,12 @@ from enum import Enum
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import OrderSide, PositionSide, Position, OrderType, Order
+from binance_f.model import OrderSide, PositionSide, Position, OrderType, Order, TimeInForce, WorkingType
 from market import market_constant
 from market.Symbol import Symbol
-from utils import order_utils
-from utils.order_utils import SubtotalBundle, OrderFilter
+from utils import order_utils, comm_utils
+from utils.comm_utils import fix_precision
+from utils.order_utils import OrdersInfo, OrderFilter
 
 
 class StopState(Enum):
@@ -27,7 +28,25 @@ def get_stop_order_side(positionSide: str) -> str:
     raise NotImplementedError(f'not support {positionSide}')
 
 
-def get_current_new_stop_orders(client: RequestClient, p: Position) -> SubtotalBundle:
+def get_current_new_stop_take_orders(client: RequestClient, p: Position) -> OrdersInfo:
+    symbol: Symbol = Symbol.get_with_usdt(p.symbol)
+    stop_order_side: str = get_stop_order_side(p.positionSide)
+    of = OrderFilter(symbol=symbol.symbol,
+                     status='NEW',
+                     side=stop_order_side
+                     )
+    all_ods: OrdersInfo = order_utils.fetch_order(client, of)
+    stop_ods: OrdersInfo = order_utils.filter_order(all_ods.orders, OrderFilter(
+        orderType=OrderType.STOP_MARKET
+    ))
+    take_ods: OrdersInfo = order_utils.filter_order(all_ods.orders, OrderFilter(
+        orderType=OrderType.TAKE_PROFIT_MARKET
+    ))
+
+    return order_utils.combined_order_info(stop_ods, take_ods)
+
+
+def get_current_new_stop_orders(client: RequestClient, p: Position) -> OrdersInfo:
     symbol: Symbol = Symbol.get_with_usdt(p.symbol)
     stop_order_side: str = get_stop_order_side(p.positionSide)
     of = OrderFilter(symbol=symbol.symbol,
@@ -107,3 +126,24 @@ def get_high_price(positionSide: str, a: float, b: float) -> float:
     elif positionSide == PositionSide.SHORT:
         return min(a, b)
     raise NotImplementedError('not support ' + str(positionSide))
+
+
+def post_stop_order(client: RequestClient, tags: List[str], position: Position, stopPrice: float,
+                    quantity: float) -> Order:
+    positionSide = position.positionSide
+    stop_side = get_stop_order_side(positionSide)
+    symbol: Symbol = Symbol.get_with_usdt(position.symbol)
+    stopPrice = fix_precision(symbol.precision_price, stopPrice)
+    quantity = fix_precision(symbol.precision_amount, quantity)
+    result = client.post_order(
+        side=stop_side,
+        symbol=f'{symbol.symbol}USDT',
+        timeInForce=TimeInForce.GTC,
+        ordertype=OrderType.STOP_MARKET,
+        workingType=WorkingType.CONTRACT_PRICE,
+        positionSide=positionSide,
+        stopPrice=stopPrice,
+        quantity=quantity,
+        newClientOrderId=comm_utils.get_order_cid(tags)
+    )
+    return result

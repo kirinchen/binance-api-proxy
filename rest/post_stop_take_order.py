@@ -1,14 +1,12 @@
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, AccountInformation, Order
-from infr import constant
+from binance_f.model import OrderSide, OrderType, TimeInForce, WorkingType, PositionSide, Order
 from market.Symbol import Symbol
 from rest import get_recent_trades_list
-from rest.post_order import fix_precision
 from rest.poxy_controller import PayloadReqKey
 from utils import comm_utils
-from utils.comm_utils import get_order_cid, gen_group_uid
+from utils.comm_utils import fix_precision
 
 
 class Dto:
@@ -58,6 +56,3 @@ def _get_ordertype(orderSide: str, lastPrice: float, stopPrice: float) -> OrderT
         return OrderType.STOP_MARKET if lastPrice > stopPrice else OrderType.TAKE_PROFIT_MARKET
     else:
         return OrderType.STOP_MARKET if lastPrice < stopPrice else OrderType.TAKE_PROFIT_MARKET
-
-
-

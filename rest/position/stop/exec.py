@@ -1,10 +1,12 @@
 from binance_f import RequestClient
-from utils import order_utils
-from utils.order_utils import OrderFilter
+from rest.position.stop.stop_mediation import StopMediationDto, StopMediation
+from rest.poxy_controller import PayloadReqKey
+from utils import comm_utils
 
 
 def run(client: RequestClient, payload: dict):
-    order_filter: OrderFilter = OrderFilter(**payload)
-    fetched_bundle = order_utils.fetch_order(client, order_filter)
-    amt = order_utils.sum_amt(fetched_bundle.orders)
-    return amt
+    PayloadReqKey.clean_default_keys(payload)
+    dto = StopMediationDto(**payload)
+    stopMediation = StopMediation(client=client, dto=dto)
+
+    return comm_utils.to_dict(stopMediation.stop())
