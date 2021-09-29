@@ -10,7 +10,7 @@ from rest.position.stop.dto import StopResult
 from rest.position.stop.guaranteed import type_order
 from rest.position.stop.position_stop_utils import StopState, GuaranteedBundle
 from rest.position.stop.stoper import StopDto, Stoper
-from utils import position_utils
+from utils import position_utils, direction_utils
 from utils.comm_utils import to_dict
 from utils.order_utils import OrdersInfo
 
@@ -23,9 +23,11 @@ class StopOrder:
 
 
 class StopGuaranteedDto(StopDto):
-    def __init__(self, symbol: str, positionSide: str, closeRate: float, tags: List[str] = list()):
+    def __init__(self, symbol: str, positionSide: str, closeRate: float, thresholdRate: float,
+                 tags: List[str] = list()):
         super().__init__(symbol=symbol, positionSide=positionSide, tags=tags)
         self.closeRate: float = closeRate
+        self.thresholdRate: float = thresholdRate
 
 
 class StopGuaranteed(Stoper[StopGuaranteedDto]):
@@ -50,9 +52,9 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
     def is_conformable(self) -> bool:
         if not super().is_conformable():
             return False
-        if not position_stop_utils.is_difference_over_range(self.lastPrice, self.guaranteed_price, 0.0001):
-            return False
-        return position_stop_utils.is_valid_stop_price(self.position, self.lastPrice, self.guaranteed_price)
+        p: float = direction_utils.rise_price(self.position.positionSide, self.guaranteed_price, self.dto.thresholdRate)
+
+        return position_stop_utils.is_valid_stop_price(self.position, self.lastPrice, p)
 
     def stop(self) -> StopResult:
         ods: List[Order] = list()
@@ -60,7 +62,7 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
             ods.extend(self.orderHandleBundle.guaranteed.post_order(client=self.client, tags=self.tags))
         if not self.orderHandleBundle.base.is_up_to_date():
             ods.extend(self.orderHandleBundle.base.post_order(client=self.client, tags=self.tags))
-        return StopResult(orders=ods, active=True,stopState=self.state)
+        return StopResult(orders=ods, active=True, stopState=self.state)
 
     def is_up_to_date(self) -> bool:
         if not self.orderHandleBundle.guaranteed.is_up_to_date():
@@ -86,6 +88,6 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         )
 
     def _calc_stop_price(self) -> float:
-        amt:float=position_utils.get_abs_amt(self.position)
+        amt: float = position_utils.get_abs_amt(self.position)
         guard_balance = (self.position.entryPrice * amt) / self.position.leverage
         return position_stop_utils.clac_guard_price(self.position, guard_balance)
