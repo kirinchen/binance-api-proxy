@@ -34,21 +34,16 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         super().__init__(client=client, state=StopState.GUARANTEED, dto=dto)
         self.stopPrice: float = None
         self.stopAmt: float = None
-        self.orderedFinder: PositionOrderFinder = None
         self.guaranteed_price: float = None
         self.guaranteed_amt: float = None
-        self.orderedFinder: PositionOrderFinder = None
-        self.buildLeaveOrderInfo: OrderBuildLeave = None
         self.orderHandleBundle: type_order.HandleBundle = None
 
     def load_vars(self):
         super().load_vars()
-        self.orderedFinder = PositionOrderFinder(client=self.client, position=self.position)
-        self.buildLeaveOrderInfo = self.orderedFinder.get_build_leave_order_info()
         self.stopPrice: float = self._calc_stop_price()
         self.guaranteed_price: float = position_stop_utils.calc_guaranteed_price(self.position.positionSide,
                                                                                  self._gen_guaranteed_bundle())
-        self.guaranteed_amt: float = self.buildLeaveOrderInfo.build.origQty * self.dto.closeRate
+        self.guaranteed_amt: float = position_utils.get_abs_amt(self.position) * self.dto.closeRate
         self.stopAmt: float = position_utils.get_abs_amt(self.position) - self.guaranteed_amt
         self.orderHandleBundle = type_order.gen_type_order_handle(**self.__dict__)
 
@@ -86,11 +81,11 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
         return GuaranteedBundle(
             closeRate=self.dto.closeRate,
             lever=self.position.leverage,
-            amount=self.buildLeaveOrderInfo.build.origQty,
-            price=self.buildLeaveOrderInfo.build.avgPrice
+            amount=position_utils.get_abs_amt(self.position),
+            price=self.position.entryPrice
         )
 
     def _calc_stop_price(self) -> float:
-        build: OrdersInfo = self.buildLeaveOrderInfo.build
-        guard_balance = (build.avgPrice * build.origQty) / self.position.leverage
+        amt:float=position_utils.get_abs_amt(self.position)
+        guard_balance = (self.position.entryPrice * amt) / self.position.leverage
         return position_stop_utils.clac_guard_price(self.position, guard_balance)

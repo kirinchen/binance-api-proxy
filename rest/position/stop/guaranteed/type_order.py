@@ -21,7 +21,6 @@ class TypeOrderHandle(metaclass=ABCMeta):
     def __init__(self, position: Position):
         self.position: Position = position
         self.currentOrders: List[Order] = list()
-        self.doneOrders: List[Order] = list()
 
     def init_vars(self):
         pass
@@ -43,9 +42,7 @@ class GuaranteedState(Enum):
     IDLE = 'IDLE'  # no any Filled or new stop order
     DONE = 'DONE'  # just amt / price is ok and no new order
     CORRECT = 'CORRECT'  # just amt / price + no new order
-    CHAOS_OLD_DONE = 'CHAOS_OLD_DONE'  # 已處理的 order + 現在的 order 就是不對
     CHAOS_CURRENT = 'CHAOS_CURRENT'
-    CHAOS_COMBINE = 'CHAOS_COMBINE'
 
 
 class GuaranteedOrderHandle(TypeOrderHandle):
@@ -55,13 +52,9 @@ class GuaranteedOrderHandle(TypeOrderHandle):
         self.guaranteed_price: float = guaranteed_price
         self.guaranteed_amt: float = guaranteed_amt
         self.currentStopOrderInfo: OrdersInfo = None
-        self.doneStopOrderInfo: OrdersInfo = None
 
     def init_vars(self):
         self.currentStopOrderInfo: OrdersInfo = order_utils.filter_order(self.currentOrders, OrderFilter(
-            tags=[GUARANTEED_ORDER_TAG]
-        ))
-        self.doneStopOrderInfo: OrdersInfo = order_utils.filter_order(self.doneOrders, OrderFilter(
             tags=[GUARANTEED_ORDER_TAG]
         ))
 
@@ -74,21 +67,17 @@ class GuaranteedOrderHandle(TypeOrderHandle):
                                                     stopPrice=self.guaranteed_price, quantity=self.guaranteed_amt)]
 
     def get_state(self) -> GuaranteedState:
-        if self.currentStopOrderInfo.origQty <= 0 and self.doneStopOrderInfo.origQty <= 0:
-            return GuaranteedState.IDLE
         if self.currentStopOrderInfo.origQty <= 0:
-            return GuaranteedState.CHAOS_OLD_DONE if position_stop_utils.is_difference_over_range(
-                self.doneStopOrderInfo.origQty,
-                self.guaranteed_amt,
-                constant.LIMIT_0_RATE) else GuaranteedState.DONE
-        if self.doneStopOrderInfo.origQty <= 0:
-            return GuaranteedState.CHAOS_CURRENT if position_stop_utils.is_difference_over_range(
+            return GuaranteedState.IDLE
+
+        if position_stop_utils.is_difference_over_range(
                 self.currentStopOrderInfo.origQty,
                 self.guaranteed_amt,
-                constant.LIMIT_0_RATE) else GuaranteedState.DONE
-        total_amt = self.currentStopOrderInfo.origQty + self.doneStopOrderInfo.origQty
-        return GuaranteedState.CHAOS_COMBINE if position_stop_utils.is_difference_over_range(total_amt,
-                                                                                             self.guaranteed_amt,
+                constant.LIMIT_0_RATE):
+            return GuaranteedState.CHAOS_CURRENT
+        currentAvgPrice: float = self.currentStopOrderInfo.avgPrice
+        return GuaranteedState.CHAOS_CURRENT if position_stop_utils.is_difference_over_range(currentAvgPrice,
+                                                                                             self.guaranteed_price,
                                                                                              constant.LIMIT_0_RATE) else GuaranteedState.DONE
 
     def is_up_to_date(self) -> bool:
@@ -152,7 +141,6 @@ class HandleBundle:
 
 def gen_type_order_handle(position: Position,
                           currentStopOrdersInfo: OrdersInfo,
-                          buildLeaveOrderInfo: OrderBuildLeave,
                           guaranteed_price: float,
                           guaranteed_amt: float,
                           stopPrice: float,
@@ -166,11 +154,6 @@ def gen_type_order_handle(position: Position,
         else:
             guaranteed.currentOrders.append(od)
 
-    for od in buildLeaveOrderInfo.leave.orders:
-        if position_stop_utils.is_valid_stop_price(position, position.entryPrice, od.stopPrice):
-            base.doneOrders.append(od)
-        else:
-            guaranteed.doneOrders.append(od)
 
     guaranteed.init_vars()
     base.init_vars()
