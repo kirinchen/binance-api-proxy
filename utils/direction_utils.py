@@ -16,14 +16,19 @@ def get_high_price(positionSide: str, a: float, b: float) -> float:
         return min(a, b)
     raise NotImplementedError('not support ' + str(positionSide))
 
+
 def get_low_price(positionSide: str, a: float, b: float) -> float:
     """
     LONG : a = 100 , b = 50  -> a = 100
     SHORT : a = 100 , b = 50  -> b = 50
     """
+    if a is None:
+        return b
+    if b is None:
+        return a
     a = -a
     b = -b
-    nv = get_high_price(positionSide,a,b)
+    nv = get_high_price(positionSide, a, b)
     return -nv
 
 
