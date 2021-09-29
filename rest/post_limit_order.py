@@ -13,7 +13,10 @@ from utils.comm_utils import fix_precision
 def run(client: RequestClient, payload: dict):
     try:
         PayloadReqKey.clean_default_keys(payload)
-        return comm_utils.to_dict(post_limit_order(client=client, **payload))
+        if 'size' in payload:
+            return comm_utils.to_dict(post_grid_limit_order(client=client, **payload))
+        else:
+            return comm_utils.to_dict(post_limit_order(client=client, **payload))
     except Exception as e:  # work on python 3.x
         return str(e)
 
@@ -26,14 +29,32 @@ def _calc_quantity(account: AccountInformation, quote: float, withdrawAmountRate
     return quantity
 
 
+def post_grid_limit_order(client: RequestClient, positionSide: str, symbol: str, tags: List[str],
+                          withdrawAmountRate: float, size: int, gapRate, price: float = None) -> List[Order]:
+    ans: List[Order] = list()
+    per_withdrawAmountRate = withdrawAmountRate / size
+    p = _opt_price(client=client, positionSide=positionSide, symbol=Symbol.get(symbol), price=price)
+    for i in range(size):
+        r: float = 1 + (gapRate * i)
+        per_price = direction_utils.fall_price(positionSide=positionSide, orgPrice=p, rate=r)
+        ans.append(post_limit_order(client=client, positionSide=positionSide, symbol=symbol, tags=tags,
+                                    withdrawAmountRate=per_withdrawAmountRate, price=per_price))
+    return ans
+
+
+def _opt_price(client: RequestClient, positionSide: str, symbol: Symbol, price: float = None) -> float:
+    lastPrice = get_recent_trades_list.get_last_safe_limit_price(client=client, symbol=symbol,
+                                                                 positionSide=positionSide)
+    p: float = direction_utils.get_low_price(positionSide, lastPrice, price)
+    return p
+
+
 def post_limit_order(client: RequestClient, positionSide: str, symbol: str, tags: List[str],
-                     withdrawAmountRate: float, price: float = None) -> Order:
+                     withdrawAmountRate: float, price: float = None, forcePrice: bool = False) -> Order:
     symbol: Symbol = Symbol.get(symbol)
     account: AccountInformation = client.get_account_information()
-    lastPrice = get_recent_trades_list.get_last_price(client=client, symbol=symbol)
-    lastPrice = direction_utils.rise_price(positionSide, lastPrice, 1.0001)
+    p: float = price if forcePrice else _opt_price(client=client, positionSide=positionSide, symbol=symbol, price=price)
     position: Position = position_utils.find_position(client=client, symbol=symbol.symbol, positionSide=positionSide)
-    p: float = direction_utils.get_high_price(positionSide, lastPrice, price)
     qty: float = _calc_quantity(account=account, quote=p, withdrawAmountRate=withdrawAmountRate, position=position)
 
     price = fix_precision(symbol.precision_price, p)
