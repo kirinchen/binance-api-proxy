@@ -34,7 +34,7 @@ def post_grid_limit_order(client: RequestClient, positionSide: str, symbol: str,
     ans: List[Order] = list()
     per_withdrawAmountRate = withdrawAmountRate / size
     p = _opt_price(client=client, positionSide=positionSide, symbol=Symbol.get(symbol), price=price)
-    for i in range(size):
+    for i in range(int(size)):
         r: float = 1 + (gapRate * i)
         per_price = direction_utils.fall_price(positionSide=positionSide, orgPrice=p, rate=r)
         ans.append(post_limit_order(client=client, positionSide=positionSide, symbol=symbol, tags=tags,
