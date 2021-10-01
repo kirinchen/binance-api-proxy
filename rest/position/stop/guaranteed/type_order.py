@@ -59,7 +59,7 @@ class GuaranteedOrderHandle(TypeOrderHandle):
         ))
 
     def clean_old_orders(self, client: RequestClient) -> List[Order]:
-        position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
+        return position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
                                              currentOds=self.currentStopOrderInfo.orders)
 
     def post_order(self, client: RequestClient, tags: List[str]) -> List[Order]:
@@ -124,7 +124,7 @@ class BaseOrderHandle(TypeOrderHandle):
         return state == BaseState.DONE
 
     def clean_old_orders(self, client: RequestClient) -> List[Order]:
-        position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
+        return position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
                                              currentOds=self.currentStopOrderInfo.orders)
 
     def post_order(self, client: RequestClient, tags: List[str]) -> List[Order]:

@@ -59,11 +59,15 @@ def is_difference_over_range(source: float, target: float, rate: float):
     return r > rate
 
 
-def clean_old_orders(client: RequestClient, symbol: Symbol, currentOds: List[Order]):
+def clean_old_orders(client: RequestClient, symbol: Symbol, currentOds: List[Order]) -> List[Order]:
     try:
-        if currentOds and len(currentOds) > 0:
-            result = client.cancel_list_orders(symbol=symbol.gen_with_usdt(),
-                                               orderIdList=[od.orderId for od in currentOds])
+        if currentOds is None:
+            return list()
+        if len(currentOds) <= 0:
+            return list()
+        client.cancel_list_orders(symbol=symbol.gen_with_usdt(),
+                                         orderIdList=[od.orderId for od in currentOds])
+        return currentOds
     except Exception as e:  # work on python 3.x
         print('Failed to upload to ftp: ' + str(e))
 
