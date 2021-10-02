@@ -21,6 +21,7 @@ class TypeOrderHandle(metaclass=ABCMeta):
     def __init__(self, position: Position):
         self.position: Position = position
         self.currentOrders: List[Order] = list()
+        self.symbol: Symbol = Symbol.get_with_usdt(position.symbol)
 
     def init_vars(self):
         pass
@@ -60,10 +61,12 @@ class GuaranteedOrderHandle(TypeOrderHandle):
 
     def clean_old_orders(self, client: RequestClient) -> List[Order]:
         return position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
-                                             currentOds=self.currentStopOrderInfo.orders)
+                                                    currentOds=self.currentStopOrderInfo.orders)
 
     def post_order(self, client: RequestClient, tags: List[str]) -> List[Order]:
-        return [position_stop_utils.post_stop_order(client=client, tags=tags, position=self.position,
+        n_tag = list(tags)
+        n_tag.append(GUARANTEED_ORDER_TAG)
+        return [position_stop_utils.post_stop_order(client=client, tags=n_tag, position=self.position,
                                                     stopPrice=self.guaranteed_price, quantity=self.guaranteed_amt)]
 
     def get_state(self) -> GuaranteedState:
@@ -71,14 +74,15 @@ class GuaranteedOrderHandle(TypeOrderHandle):
             return GuaranteedState.IDLE
 
         if position_stop_utils.is_difference_over_range(
-                self.currentStopOrderInfo.origQty,
-                self.guaranteed_amt,
+                self.symbol.fix_precision_amt(self.currentStopOrderInfo.origQty),
+                self.symbol.fix_precision_amt(self.guaranteed_amt),
                 constant.LIMIT_0_RATE):
             return GuaranteedState.CHAOS_CURRENT
         currentAvgPrice: float = self.currentStopOrderInfo.avgPrice
-        return GuaranteedState.CHAOS_CURRENT if position_stop_utils.is_difference_over_range(currentAvgPrice,
-                                                                                             self.guaranteed_price,
-                                                                                             constant.LIMIT_0_RATE) else GuaranteedState.DONE
+        return GuaranteedState.CHAOS_CURRENT if position_stop_utils.is_difference_over_range(
+            self.symbol.fix_precision_price(currentAvgPrice),
+            self.symbol.fix_precision_price(self.guaranteed_price),
+            constant.LIMIT_0_RATE) else GuaranteedState.DONE
 
     def is_up_to_date(self) -> bool:
         """
@@ -111,12 +115,14 @@ class BaseOrderHandle(TypeOrderHandle):
     def get_state(self) -> BaseState:
         if self.currentStopOrderInfo.origQty <= 0:
             return BaseState.IDLE
-        if position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOrderInfo.avgPrice,
+        if position_stop_utils.is_difference_over_range(self.symbol.fix_precision_price(self.stopPrice),
+                                                        self.symbol.fix_precision_price(
+                                                                self.currentStopOrderInfo.avgPrice),
                                                         constant.LIMIT_0_RATE):
             return BaseState.CHAOS
         return BaseState.CHAOS if position_stop_utils.is_difference_over_range(
-            self.currentStopOrderInfo.origQty,
-            self.stopAmt,
+            self.symbol.fix_precision_amt(self.currentStopOrderInfo.origQty),
+            self.symbol.fix_precision_amt(self.stopAmt),
             constant.LIMIT_0_RATE) else BaseState.DONE
 
     def is_up_to_date(self) -> bool:
@@ -125,7 +131,7 @@ class BaseOrderHandle(TypeOrderHandle):
 
     def clean_old_orders(self, client: RequestClient) -> List[Order]:
         return position_stop_utils.clean_old_orders(client=client, symbol=Symbol.get_with_usdt(self.position.symbol),
-                                             currentOds=self.currentStopOrderInfo.orders)
+                                                    currentOds=self.currentStopOrderInfo.orders)
 
     def post_order(self, client: RequestClient, tags: List[str]) -> List[Order]:
         return [position_stop_utils.post_stop_order(client=client, tags=tags, position=self.position,
@@ -153,7 +159,6 @@ def gen_type_order_handle(position: Position,
             base.currentOrders.append(od)
         else:
             guaranteed.currentOrders.append(od)
-
 
     guaranteed.init_vars()
     base.init_vars()

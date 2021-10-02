@@ -27,6 +27,14 @@ class Symbol(Enum):
     def get_min_amount(self):
         return 1 / pow(10, self.precision_amount)
 
+    def fix_precision_price(self, price: float) -> float:
+        fstr = str(self.precision_price) + 'f'
+        return float(('{:.' + fstr + '}').format(price))
+
+    def fix_precision_amt(self, amt: float) -> float:
+        fstr = str(self.precision_amount) + 'f'
+        return float(('{:.' + fstr + '}').format(amt))
+
     @classmethod
     def values(cls):
         ans = [e for e in Symbol]

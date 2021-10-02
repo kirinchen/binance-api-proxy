@@ -35,7 +35,7 @@ class PositionOrderFinder:
         for od in all_orders.orders:
             sum_amt += order_utils.get_order_side_amt(od)
             ans.append(od)
-            if not position_stop_utils.is_difference_over_range(sum_amt, self.position.positionAmt, constant.LIMIT_0_RATE):
+            if not position_stop_utils.is_difference_over_range(  sum_amt, self.position.positionAmt, constant.LIMIT_0_RATE):
                 return ans
 
         raise TypeError('over scan all the orders' + str(self.position))

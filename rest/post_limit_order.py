@@ -57,9 +57,9 @@ def post_limit_order(client: RequestClient, positionSide: str, symbol: str, tags
     position: Position = position_utils.find_position(client=client, symbol=symbol.symbol, positionSide=positionSide)
     qty: float = _calc_quantity(account=account, quote=p, withdrawAmountRate=withdrawAmountRate, position=position)
 
-    price = fix_precision(symbol.precision_price, p)
-    quantity_str = fix_precision(symbol.precision_amount, qty)
-    return client.post_order(price=price,
+    price_str = str(symbol.fix_precision_price(p))
+    quantity_str = str(symbol.fix_precision_amt(qty))
+    return client.post_order(price=price_str,
                              side=direction_utils.get_limit_order_side(positionSide),
                              symbol=f'{symbol.symbol}USDT',
                              timeInForce=TimeInForce.GTC,

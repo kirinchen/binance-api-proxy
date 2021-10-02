@@ -36,7 +36,7 @@ class Stoper(Generic[T], metaclass=ABCMeta):
         self.state: StopState = state
         self.position: Position = self.get_current_position()
         self.no_position = position_utils.get_abs_amt(self.position) <= 0
-        self.tags = self._setup_tags(dto.tags)
+        self.tags = self._setup_tags(list( dto.tags))
         if self.no_position:
             return
         self.currentStopOrdersInfo: OrdersInfo = None
