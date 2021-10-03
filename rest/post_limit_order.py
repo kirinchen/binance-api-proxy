@@ -30,7 +30,7 @@ def _calc_quantity(account: AccountInformation, quote: float, withdrawAmountRate
 
 
 def post_grid_limit_order(client: RequestClient, positionSide: str, symbol: str, tags: List[str],
-                          withdrawAmountRate: float, size: int, gapRate, price: float = None) -> List[Order]:
+                          withdrawAmountRate: float, size: int, gapRate:float, price: float = None) -> List[Order]:
     ans: List[Order] = list()
     per_withdrawAmountRate = withdrawAmountRate / size
     p = _opt_price(client=client, positionSide=positionSide, symbol=Symbol.get(symbol), price=price)
@@ -43,8 +43,8 @@ def post_grid_limit_order(client: RequestClient, positionSide: str, symbol: str,
 
 
 def _opt_price(client: RequestClient, positionSide: str, symbol: Symbol, price: float = None) -> float:
-    lastPrice = get_recent_trades_list.get_last_safe_limit_price(client=client, symbol=symbol,
-                                                                 positionSide=positionSide)
+    lastPrice = get_recent_trades_list.get_last_fall_price(client=client, symbol=symbol,
+                                                           positionSide=positionSide)
     p: float = direction_utils.get_low_price(positionSide, lastPrice, price)
     return p
 
