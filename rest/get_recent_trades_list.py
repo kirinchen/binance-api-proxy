@@ -39,6 +39,6 @@ def get_last_price(client: RequestClient, symbol: Symbol) -> float:
     return data.all.lastPrice
 
 
-def get_last_safe_limit_price(client: RequestClient, positionSide: str, symbol: Symbol) -> float:
+def get_last_safe_limit_price(client: RequestClient, positionSide: str, symbol: Symbol, buffRate=1.00002) -> float:
     lastPrice = get_last_price(client=client, symbol=symbol)
-    return direction_utils.fall_price(positionSide, lastPrice, 1.00002)
+    return direction_utils.fall_price(positionSide, lastPrice, buffRate)
