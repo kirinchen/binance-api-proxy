@@ -63,7 +63,10 @@ class OrderBuilder:
 
     def post_one(self, pq: PriceQty) -> Order:
         price_str = str(self.get_symbol().fix_precision_price(pq.price))
-        quantity_str = str(self.get_symbol().fix_precision_amt(pq.quantity))
+        p_amt: float = self.get_symbol().fix_precision_amt(pq.quantity)
+        if p_amt == 0:
+            return None
+        quantity_str = str(p_amt)
         result = self.client.post_order(
             side=self.orderSide,
             symbol=self.get_symbol().gen_with_usdt(),
