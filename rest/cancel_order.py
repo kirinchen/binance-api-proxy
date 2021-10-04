@@ -11,6 +11,8 @@ from market.Symbol import Symbol
 # PrintBasic.print_obj(result)
 from utils import comm_utils
 
+MAX_BATCH_COUNT = 6
+
 
 class Dto:
 
@@ -24,10 +26,19 @@ class Dto:
 
 def run(client: RequestClient, payload: dict):
     dto = Dto(**payload)
+    count = 0
+    batch_ids: List[str] = list()
+    results = list()
+    for oid in dto.ids:
+        count = count + 1
+        batch_ids.append(oid)
+        if count == MAX_BATCH_COUNT:
+            results.append(client.cancel_list_orders(symbol=dto.get_symbole().gen_with_usdt(),
+                                                     orderIdList=batch_ids))
+            count = 0
+            batch_ids.clear()
 
-    result = client.cancel_list_orders(symbol=dto.get_symbole().gen_with_usdt(),
-                                       orderIdList=dto.ids)
-    return comm_utils.to_struct_list(result)
+    return comm_utils.to_struct_list(results)
 
 
 def cancel_order(client: RequestClient, symbol: Symbol, orderId: int):
