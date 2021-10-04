@@ -38,6 +38,10 @@ def run(client: RequestClient, payload: dict):
             count = 0
             batch_ids.clear()
 
+    if len(batch_ids) > 0:
+        results.append(client.cancel_list_orders(symbol=dto.get_symbole().gen_with_usdt(),
+                                                 orderIdList=batch_ids))
+
     return comm_utils.to_struct_list(results)
 
 
