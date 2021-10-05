@@ -9,7 +9,8 @@ from utils import comm_utils
 def gen_order_builder(client: RequestClient, payload: dict) -> BaseOrderBuilder:
     strategy: str = payload.get('strategy')
     strategy: OrderStrategy = comm_utils.value_of_enum(OrderStrategy, strategy)
-    return {
-        OrderStrategy.TAKE_PROFIT: TakeProfitOrderBuilder(client=client, dto=TakeProfitDto(**payload)),
-        OrderStrategy.LIMIT: LimitOrderBuilder(client=client, dto=LimitDto(**payload))
-    }.get(strategy)
+    if strategy == OrderStrategy.TAKE_PROFIT:
+        return TakeProfitOrderBuilder(client=client, dto=TakeProfitDto(**payload))
+    if strategy == OrderStrategy.LIMIT:
+        return LimitOrderBuilder(client=client, dto=LimitDto(**payload))
+    raise NotImplementedError(f'not Implemented {strategy} ')
