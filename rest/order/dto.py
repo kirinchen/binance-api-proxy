@@ -36,5 +36,9 @@ class TakeProfitDto(BaseDto):
 
 class LimitDto(BaseDto):
 
-    def __init__(self,**kwargs):
+    def __init__(self, withdrawAmountRate: float, priceBuffRate: float, size: int, gapRate: float, **kwargs):
         super(LimitDto, self).__init__(**kwargs)
+        self.withdrawAmountRate: float = withdrawAmountRate
+        self.priceBuffRate: float = priceBuffRate
+        self.gapRate: float = gapRate
+        self.size: int = size
