@@ -1,6 +1,7 @@
 import random
 import string
-from typing import List
+from enum import Enum
+from typing import List, Any, TypeVar
 
 
 def random_chars(count: int) -> str:
@@ -59,10 +60,23 @@ def gen_group_uid() -> str:
     uid = random_chars(3)
     return f'_G{uid}_'
 
+
+E = TypeVar('E', bound=Enum)
+
+
+def value_of_enum(e: E, v: Any) -> E:
+    for _e in e:
+        e: E = _e
+        if e.value == v:
+            return e
+    raise KeyError('Not find :' + v)
+
+
 def fix_precision(p: int, fv: float):
     fstr = str(p) + 'f'
     ans = float(('{:.' + fstr + '}').format(fv))
     return str(ans)
+
 
 def to_dict(obj, classkey=None) -> dict:
     if isinstance(obj, dict):
