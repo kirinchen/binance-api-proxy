@@ -12,10 +12,17 @@ class OrderStrategy(Enum):
 
 class BaseDto:
 
-    def __init__(self, symbol: str, positionSide: str, strategy: str, tags: List[str] = list(), **kwargs):
+    def __init__(self, symbol: str, positionSide: str, strategy: str, priceBuffRate: float, gapRate: float,
+                 size: int = 1,
+                 proportionalRate: float = 1,
+                 tags: List[str] = list(), **kwargs):
         self.strategy: str = strategy
         self.symbol: str = symbol
         self.positionSide: str = positionSide
+        self.priceBuffRate: float = priceBuffRate
+        self.gapRate: float = gapRate
+        self.proportionalRate: float = proportionalRate
+        self.size: int = size
         self.tags: List[str] = list(tags)
 
     def get_symbol(self) -> Symbol:
@@ -27,19 +34,13 @@ class BaseDto:
 
 class TakeProfitDto(BaseDto):
 
-    def __init__(self, positionRate: float, priceBuffRate: float, size: int, gapRate: float, **kwargs):
+    def __init__(self, positionRate: float, **kwargs):
         super(TakeProfitDto, self).__init__(**kwargs)
         self.positionRate: float = positionRate
-        self.priceBuffRate: float = priceBuffRate
-        self.gapRate: float = gapRate
-        self.size: int = size
 
 
 class LimitDto(BaseDto):
 
-    def __init__(self, withdrawAmountRate: float, priceBuffRate: float, size: int, gapRate: float, **kwargs):
+    def __init__(self, withdrawAmountRate: float, **kwargs):
         super(LimitDto, self).__init__(**kwargs)
         self.withdrawAmountRate: float = withdrawAmountRate
-        self.priceBuffRate: float = priceBuffRate
-        self.gapRate: float = gapRate
-        self.size: int = size

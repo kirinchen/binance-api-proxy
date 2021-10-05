@@ -12,22 +12,25 @@ class LimitOrderBuilder(BaseOrderBuilder[LimitDto]):
 
     def __init__(self, client: RequestClient, dto: LimitDto):
         super(LimitOrderBuilder, self).__init__(client, dto)
-        self.account: AccountInformation = client.get_account_information()
+
         self.position: Position = self.get_current_position()
 
     def get_order_side(self) -> str:
         return direction_utils.get_limit_order_side(self.dto.positionSide)
 
-    def _calc_quantity(self, account: AccountInformation, quote: float, withdrawAmountRate: float) -> float:
-        amount = account.maxWithdrawAmount * withdrawAmountRate
+    def _calc_quantity(self, quote: float, amount: float) -> float:
         max_ratio = self.position.maxNotionalValue / amount
         ratio = min(max_ratio, self.position.leverage)
         quantity = (amount * ratio) / quote
         return quantity
 
     def gen_price_qty_list(self) -> List[PriceQty]:
-        ans: List[Order] = list()
-        per_withdrawAmountRate = self.dto.withdrawAmountRate / self.dto.size
+
+        account: AccountInformation = self.client.get_account_information()
+        amount = account.maxWithdrawAmount * self.dto.withdrawAmountRate
+
+        base_amt: float = comm_utils.calc_proportional_first(sum=amount, rate=self.dto.proportionalRate,
+                                                             n=self.dto.size)
         lastPrice = get_recent_trades_list.get_last_fall_price(client=self.client, symbol=self.dto.get_symbol(),
                                                                positionSide=self.dto.positionSide,
                                                                buffRate=self.dto.priceBuffRate)
@@ -35,7 +38,8 @@ class LimitOrderBuilder(BaseOrderBuilder[LimitDto]):
         priceQtyList: List[PriceQty] = list()
         for i in range(int(self.dto.size)):
             p = lastPrice * (1 + self.dto.gapRate)
-            qty: float = self._calc_quantity(quote=p, withdrawAmountRate=per_withdrawAmountRate)
+            pre_amt: float = base_amt * pow(self.dto.proportionalRate, i)
+            qty: float = self._calc_quantity(quote=p, amount=pre_amt)
             priceQtyList.append(PriceQty(
                 price=p,
                 quantity=qty

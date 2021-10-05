@@ -22,13 +22,15 @@ class TakeProfitOrderBuilder(BaseOrderBuilder[TakeProfitDto]):
                                                                buffRate=self.dto.priceBuffRate)
         all_qty: float = position_utils.get_abs_amt(self.get_current_position())
         part_qty: float = all_qty * self.dto.positionRate
-        per_qty: float = part_qty / self.dto.size
+        per_qty: float = comm_utils.calc_proportional_first(sum=part_qty, rate=self.dto.proportionalRate,
+                                                            n=self.dto.size)
         priceQtyList: List[PriceQty] = list()
         for i in range(int(self.dto.size)):
             p = lastPrice * (1 + self.dto.gapRate)
+            q = per_qty * pow(self.dto.proportionalRate, i)
             priceQtyList.append(PriceQty(
                 price=p,
-                quantity=per_qty
+                quantity=q
             ))
         return priceQtyList
 
