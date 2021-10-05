@@ -27,7 +27,7 @@ class BaseOrderBuilder(Generic[T], metaclass=ABCMeta):
 
     def get_current_position(self) -> Position:
         result: List[Position] = self.client.get_position()
-        pf = PositionFilter(symbol=self.symbol, positionSide=self.positionSide)
+        pf = PositionFilter(symbol=self.dto.symbol, positionSide=self.dto.positionSide)
         result = position_utils.filter_position(result, pf)
         return result[0]
 

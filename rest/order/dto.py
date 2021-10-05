@@ -32,3 +32,9 @@ class TakeProfitDto(BaseDto):
         self.priceBuffRate: float = priceBuffRate
         self.gapRate: float = gapRate
         self.size: int = size
+
+
+class LimitDto(BaseDto):
+
+    def __init__(self,**kwargs):
+        super(LimitDto, self).__init__(**kwargs)
