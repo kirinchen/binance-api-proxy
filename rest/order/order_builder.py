@@ -4,6 +4,7 @@ from typing import TypeVar, Generic, List
 
 from binance_f import RequestClient
 from binance_f.model import Position, Order
+from market.Symbol import Symbol
 from rest.order.dto import BaseDto
 from utils import position_utils
 from utils.position_utils import PositionFilter
@@ -14,6 +15,7 @@ class PriceQty:
     def __init__(self, price: float, quantity: float):
         self.price: float = price
         self.quantity: float = quantity
+
 
 
 T = TypeVar('T', bound=BaseDto)

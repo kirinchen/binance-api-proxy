@@ -39,11 +39,11 @@ def get_last_price(client: RequestClient, symbol: Symbol) -> float:
     return data.all.lastPrice
 
 
-def get_last_fall_price(client: RequestClient, positionSide: str, symbol: Symbol, buffRate=1.00002) -> float:
-    lastPrice = get_last_price(client=client, symbol=symbol)
-    return direction_utils.fall_price(positionSide, lastPrice, buffRate)
-
-
 def get_last_rise_price(client: RequestClient, positionSide: str, symbol: Symbol, buffRate=1.00002) -> float:
     lastPrice = get_last_price(client=client, symbol=symbol)
     return direction_utils.rise_price(positionSide, lastPrice, buffRate)
+
+
+def get_last_fall_price(client: RequestClient, positionSide: str, symbol: Symbol, buffRate=1.00002) -> float:
+    lastPrice = get_last_price(client=client, symbol=symbol)
+    return direction_utils.fall_price(positionSide, lastPrice, buffRate)

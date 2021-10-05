@@ -7,6 +7,7 @@ from utils import comm_utils
 
 class OrderStrategy(Enum):
     TAKE_PROFIT = 'TAKE_PROFIT'
+    LIMIT = 'LIMIT'
 
 
 class BaseDto:

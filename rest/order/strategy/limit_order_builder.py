@@ -1,33 +1,64 @@
 from typing import List
 
 from binance_f import RequestClient
-from binance_f.model import Order
+from binance_f.model import Order, AccountInformation, Position, TimeInForce, OrderType, WorkingType
 from rest import get_recent_trades_list
 from rest.order.dto import LimitDto
 from rest.order.order_builder import BaseOrderBuilder, PriceQty
-from utils import direction_utils
+from utils import direction_utils, comm_utils
 
 
-class TakeProfitOrderBuilder(BaseOrderBuilder[LimitDto]):
+class LimitOrderBuilder(BaseOrderBuilder[LimitDto]):
 
     def __init__(self, client: RequestClient, dto: LimitDto):
-        super(TakeProfitOrderBuilder, self).__init__(client, dto)
+        super(LimitOrderBuilder, self).__init__(client, dto)
+        self.account: AccountInformation = client.get_account_information()
+        self.position: Position = self.get_current_position()
 
     def get_order_side(self) -> str:
-        return direction_utils.get_limit_order_side(self.dto. positionSide)
+        return direction_utils.get_limit_order_side(self.dto.positionSide)
+
+    def _calc_quantity(self, account: AccountInformation, quote: float, withdrawAmountRate: float) -> float:
+        amount = account.maxWithdrawAmount * withdrawAmountRate
+        max_ratio = self.position.maxNotionalValue / amount
+        ratio = min(max_ratio, self.position.leverage)
+        quantity = (amount * ratio) / quote
+        return quantity
 
     def gen_price_qty_list(self) -> List[PriceQty]:
         ans: List[Order] = list()
-        per_withdrawAmountRate = self.dto. withdrawAmountRate / self.dto. size
-        lastPrice = get_recent_trades_list.get_last_fall_price(client=client, symbol=symbol,
-                                                               positionSide=positionSide)
-        p = _opt_price(client=client, positionSide=positionSide, symbol=Symbol.get(symbol), price=price)
-        for i in range(int(size)):
-            r: float = 1 + (gapRate * i)
-            per_price = direction_utils.fall_price(positionSide=positionSide, orgPrice=p, rate=r)
-            ans.append(post_limit_order(client=client, positionSide=positionSide, symbol=symbol, tags=tags,
-                                        withdrawAmountRate=per_withdrawAmountRate, price=per_price))
-        return ans
+        per_withdrawAmountRate = self.dto.withdrawAmountRate / self.dto.size
+        lastPrice = get_recent_trades_list.get_last_fall_price(client=self.client, symbol=self.dto.get_symbol(),
+                                                               positionSide=self.dto.positionSide,
+                                                               buffRate=self.dto.priceBuffRate)
+
+        priceQtyList: List[PriceQty] = list()
+        for i in range(int(self.dto.size)):
+            p = lastPrice * (1 + self.dto.gapRate)
+            qty: float = self._calc_quantity(quote=p, withdrawAmountRate=per_withdrawAmountRate)
+            priceQtyList.append(PriceQty(
+                price=p,
+                quantity=qty
+            ))
+        return priceQtyList
 
     def post_one(self, pq: PriceQty) -> Order:
-        pass
+        price_str = str(self.dto.get_symbol().fix_precision_price(pq.price))
+
+        p_amt: float = self.dto.get_symbol().fix_precision_amt(pq.quantity)
+        if p_amt == 0:
+            return None
+        quantity_str = str(p_amt)
+
+        return self.client.post_order(price=price_str,
+                                      side=self.get_order_side(),
+                                      symbol=self.dto.get_symbol().gen_with_usdt(),
+                                      timeInForce=TimeInForce.GTC,
+                                      ordertype=OrderType.LIMIT,
+                                      workingType=WorkingType.CONTRACT_PRICE,
+                                      positionSide=self.dto.positionSide,
+                                      # activationPrice=None,
+                                      # closePosition=False,
+                                      quantity=quantity_str,
+                                      newClientOrderId=comm_utils.get_order_cid(tags=self.dto.tags)
+                                      )

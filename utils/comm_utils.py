@@ -97,3 +97,9 @@ def to_dict(obj, classkey=None) -> dict:
         return data
     else:
         return obj
+
+
+def calc_proportional_first(sum: float, rate: float, n: int) -> float:
+    sun = sum * (1 - rate)
+    mom = 1 - pow(rate, n)
+    return sun / mom
