@@ -4,7 +4,7 @@ from binance_f import RequestClient
 from binance_f.model import Order, AccountInformation, Position, TimeInForce, OrderType, WorkingType
 from rest import get_recent_trades_list
 from rest.order.dto import LimitDto
-from rest.order.order_builder import BaseOrderBuilder, PriceQty
+from rest.order.order_builder import BaseOrderBuilder, PriceQty, LoadDataCheck
 from utils import direction_utils, comm_utils
 
 
@@ -12,8 +12,24 @@ class LimitOrderBuilder(BaseOrderBuilder[LimitDto]):
 
     def __init__(self, client: RequestClient, dto: LimitDto):
         super(LimitOrderBuilder, self).__init__(client, dto)
+        self.account: AccountInformation = None
+        self.position: Position = None
+        self.account: AccountInformation = None
+        self.amount: float = None
+        self.lastPrice: float = None
 
-        self.position: Position = self.get_current_position()
+    def load_data(self) -> LoadDataCheck:
+        self.position = self.get_current_position()
+        self.account = self.client.get_account_information()
+        self.amount = self.account.maxWithdrawAmount * self.dto.withdrawAmountRate
+        self.lastPrice = get_recent_trades_list.get_last_fall_price(client=self.client, symbol=self.dto.get_symbol(),
+                                                                    positionSide=self.dto.positionSide,
+                                                                    buffRate=self.dto.priceBuffRate)
+        minUsdAmt: float = self.dto.get_symbol().get_min_usd_amount(self.lastPrice)
+        leverage_amt: float = self.amount * self.position.leverage
+        if minUsdAmt > leverage_amt:
+            return LoadDataCheck(success=False, failsMsg=f'not have enough {minUsdAmt} > {leverage_amt}')
+        return LoadDataCheck(success=True)
 
     def get_order_side(self) -> str:
         return direction_utils.get_limit_order_side(self.dto.positionSide)
@@ -26,18 +42,12 @@ class LimitOrderBuilder(BaseOrderBuilder[LimitDto]):
 
     def gen_price_qty_list(self) -> List[PriceQty]:
 
-        account: AccountInformation = self.client.get_account_information()
-        amount = account.maxWithdrawAmount * self.dto.withdrawAmountRate
-
-        base_amt: float = comm_utils.calc_proportional_first(sum=amount, rate=self.dto.proportionalRate,
+        base_amt: float = comm_utils.calc_proportional_first(sum=self.amount, rate=self.dto.proportionalRate,
                                                              n=self.dto.size)
-        lastPrice = get_recent_trades_list.get_last_fall_price(client=self.client, symbol=self.dto.get_symbol(),
-                                                               positionSide=self.dto.positionSide,
-                                                               buffRate=self.dto.priceBuffRate)
 
         priceQtyList: List[PriceQty] = list()
         for i in range(int(self.dto.size)):
-            p = lastPrice * (1 + self.dto.gapRate)
+            p = self.lastPrice * (1 + self.dto.gapRate)
             pre_amt: float = base_amt * pow(self.dto.proportionalRate, i)
             qty: float = self._calc_quantity(quote=p, amount=pre_amt)
             priceQtyList.append(PriceQty(

@@ -17,6 +17,12 @@ class PriceQty:
         self.quantity: float = quantity
 
 
+class LoadDataCheck:
+
+    def __init__(self, success: bool, failsMsg: str = None):
+        self.success: bool = success
+        self.failsMsg: str = failsMsg
+
 
 T = TypeVar('T', bound=BaseDto)
 
@@ -38,6 +44,10 @@ class BaseOrderBuilder(Generic[T], metaclass=ABCMeta):
         for pq in self.gen_price_qty_list():
             ans.append(self.post_one(pq))
         return ans
+
+    @abc.abstractmethod
+    def load_data(self) -> LoadDataCheck:
+        return NotImplemented
 
     @abc.abstractmethod
     def get_order_side(self) -> str:

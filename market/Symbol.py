@@ -27,6 +27,9 @@ class Symbol(Enum):
     def get_min_amount(self):
         return 1 / pow(10, self.precision_amount)
 
+    def get_min_usd_amount(self, price: float) -> float:
+        return price * self.get_min_amount()
+
     def fix_precision_price(self, price: float) -> float:
         fstr = str(self.precision_price) + 'f'
         return float(('{:.' + fstr + '}').format(price))
