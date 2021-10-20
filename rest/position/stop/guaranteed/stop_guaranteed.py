@@ -90,4 +90,4 @@ class StopGuaranteed(Stoper[StopGuaranteedDto]):
     def _calc_stop_price(self) -> float:
         amt: float = position_utils.get_abs_amt(self.position)
         guard_balance = (self.position.entryPrice * amt) / self.position.leverage
-        return position_stop_utils.clac_guard_price(self.position, guard_balance)
+        return position_stop_utils.calc_guard_price(self.position, guard_balance)

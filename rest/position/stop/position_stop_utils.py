@@ -17,8 +17,9 @@ class StopState(Enum):
     PROFIT = 'PROF'
 
 
-def clac_guard_price(p: Position, guard_balance: float) -> float:
-    return -(guard_balance / p.positionAmt) + p.entryPrice
+def calc_guard_price(p: Position, guard_balance: float, positionAmtRate: float = 1) -> float:
+    positionAmt: float = p.positionAmt * positionAmtRate
+    return -(guard_balance / positionAmt) + p.entryPrice
 
 
 def get_current_new_stop_take_orders(client: RequestClient, p: Position) -> OrdersInfo:
@@ -66,7 +67,7 @@ def clean_old_orders(client: RequestClient, symbol: Symbol, currentOds: List[Ord
         if len(currentOds) <= 0:
             return list()
         client.cancel_list_orders(symbol=symbol.gen_with_usdt(),
-                                         orderIdList=[od.orderId for od in currentOds])
+                                  orderIdList=[od.orderId for od in currentOds])
         return currentOds
     except Exception as e:  # work on python 3.x
         print('Failed to upload to ftp: ' + str(e))

@@ -15,13 +15,15 @@ from utils.position_utils import PositionFilter, filter_position
 
 class StopLossDto(StopDto):
 
-    def __init__(self, symbol: str, positionSide: str, balanceRate: float, restopRate: float, tags: List[str] = list()):
+    def __init__(self, symbol: str, positionSide: str, balanceRate: float, restopRate: float, tags: List[str] = list(),
+                 clearRate: float = 1):
         super().__init__(symbol=symbol, positionSide=positionSide, tags=tags)
         self.balanceRate: float = balanceRate
         self.restopRate: float = restopRate
+        self.clearRate: float = clearRate
 
 
-class StopLoss(Stoper[StopDto]):
+class StopLoss(Stoper[StopLossDto]):
 
     def __init__(self, client: RequestClient, dto: StopLossDto):
         super().__init__(client=client, state=StopState.LOSS, dto=dto)
@@ -34,10 +36,11 @@ class StopLoss(Stoper[StopDto]):
     def _get_stop_quote(self):
         amount = self.get_account().maxWithdrawAmount
         guard_amt = amount * self.dto.balanceRate
-        return position_stop_utils.clac_guard_price(self.position, guard_amt)
+        return position_stop_utils.calc_guard_price(self.position, guard_amt, self.dto.clearRate)
 
     def is_up_to_date(self) -> bool:
-        if position_utils.get_abs_amt(self.position) != self.currentStopOrdersInfo.origQty:
+        quantity: float = position_utils.get_abs_amt(self.position) * self.dto.clearRate
+        if quantity != self.currentStopOrdersInfo.origQty:
             return False
         return not position_stop_utils.is_difference_over_range(self.stopPrice, self.currentStopOrdersInfo.avgPrice,
                                                                 self.dto.restopRate)
@@ -59,6 +62,7 @@ class StopLoss(Stoper[StopDto]):
         return True
 
     def post_order(self) -> Order:
+        quantity: float = position_utils.get_abs_amt(self.position) * self.dto.clearRate
         return position_stop_utils.post_stop_order(client=self.client, tags=self.tags, position=self.position,
                                                    stopPrice=self.stopPrice,
-                                                   quantity=position_utils.get_abs_amt(self.position))
+                                                   quantity=quantity)
